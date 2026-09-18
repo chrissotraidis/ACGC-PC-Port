@@ -2493,7 +2493,7 @@ static void mED_editor_ovl_draw(Submenu* submenu, GAME* game) {
         CLOSE_DISP(game->graph);
     }
 
-#if defined(TARGET_PC) && defined(KEYBOARD_TYPING)
+#if defined(TARGET_PC) && defined(KEYBOARD_TYPING) && !defined(BELLPAD_IOS)
     {
         extern int g_pc_typing_mode;
         static u8 str_on[]  = "Keyboard Typing (Tab): On";

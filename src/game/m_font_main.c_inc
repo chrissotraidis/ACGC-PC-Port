@@ -516,13 +516,16 @@ static f32 mFont_SetLineStrings_AndSpace_new(
   }
 
   flag = 0;
-  /* On PC, the poly glyph path has rendering issues on POLY_OPA_DISP.
-   * Use poly mode only for FONT_DISP callers (NPC names, choices) where
-   * the window's modelview matrix is needed for correct positioning.
-   * POLY_OPA callers (editor keyboard) use rect mode with absolute coords. */
+  /* Aurora does not render the original texture-rectangle glyph commands.
+   * Keep each caller's display-list choice, but draw every font glyph using
+   * the polygon path. POLY_OPA callers install their own character matrix. */
+#ifdef AURORA
+  flag |= mFont_SENTENCE_FLAG_USE_POLY;
+#else
   if (mode == mFont_MODE_FONT) {
     flag |= mFont_SENTENCE_FLAG_USE_POLY;
   }
+#endif
   if (flag_revert) {
     flag |= mFont_SENTENCE_FLAG_REVERT;
   }
