@@ -94,10 +94,21 @@ extern void mEA_SetLetterCardE(int card_no) {
 extern void mEA_GetCardDLProgram() {
     if (Save_Get(scene_no) != SCENE_TITLE_DEMO && Common_Get(carde_program_p) == NULL) {
         u32 crc;
+        size_t resource_size = JW_GetResSizeFileNo(RESOURCE_MY_ORIGINAL);
 
-        Common_Set(carde_program_size, JW_GetResSizeFileNo(RESOURCE_MY_ORIGINAL) -
-                                           MY_ORIGINAL_DESIGN_DATA_SIZE); // my_original.bin also contains texture data
+        if (resource_size <= MY_ORIGINAL_DESIGN_DATA_SIZE + 0x34) {
+            Common_Set(carde_program_size, 0);
+            return;
+        }
+
+        Common_Set(carde_program_size,
+                   resource_size - MY_ORIGINAL_DESIGN_DATA_SIZE); // my_original.bin also contains texture data
         Common_Set(carde_program_p, (u8*)zelda_malloc_align(Common_Get(carde_program_size), 32));
+        if (Common_Get(carde_program_p) == NULL) {
+            Common_Set(carde_program_size, 0);
+            return;
+        }
+
         _JW_GetResourceAram(JW_GetAramAddress(RESOURCE_MY_ORIGINAL) + MY_ORIGINAL_DESIGN_DATA_SIZE,
                             Common_Get(carde_program_p), Common_Get(carde_program_size));
 
