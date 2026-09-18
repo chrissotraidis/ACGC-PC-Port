@@ -4,6 +4,7 @@
 #include "pc_assets.h"
 #include "pc_disc.h"
 #include "pc_settings.h"
+#include "pc_typing.h"
 #include "pc_virtual_input.h"
 
 #include <aurora/aurora.h>
@@ -34,7 +35,7 @@
 #endif
 
 struct SDL_Window* g_pc_window = NULL;
-void* g_pc_gl_context = NULL;
+SDL_GLContext g_pc_gl_context = NULL;
 int g_pc_running = 1;
 int g_pc_no_framelimit = 0;
 int g_pc_fast_forward = 0;
@@ -169,6 +170,26 @@ static void bellpad_find_image_range(void) {
 }
 
 int pc_platform_poll_events(void) {
+#ifdef BELLPAD_IOS
+    pc_typing_update();
+    if (g_pc_editor_active && !g_pc_typing_mode) {
+        pc_typing_begin();
+    }
+    bellpad_set_native_text_active(g_pc_typing_mode && g_pc_editor_active);
+
+    char native_text[128];
+    int native_command = BELLPAD_NATIVE_TEXT_NONE;
+    while (bellpad_poll_native_text_event(native_text, sizeof(native_text),
+                                           &native_command)) {
+        if (native_text[0]) {
+            pc_typing_commit_utf8(native_text);
+        } else if (native_command == BELLPAD_NATIVE_TEXT_BACKSPACE) {
+            pc_typing_command(PC_TYPING_CMD_BACKSPACE);
+        } else if (native_command == BELLPAD_NATIVE_TEXT_ENTER) {
+            pc_typing_command(PC_TYPING_CMD_ENTER);
+        }
+    }
+#endif
     pc_pad_poll_normalized_state();
     const AuroraEvent* event = aurora_update();
     while (event && event->type != AURORA_NONE) {

@@ -36,7 +36,9 @@ int pc_typing_begin(void) {
     if (!g_pc_editor_active) return 0;
     if (!g_pc_typing_mode) {
         g_pc_typing_mode = 1;
-#ifdef AURORA
+#if defined(BELLPAD_IOS)
+        /* Bellpad's UIKit proxy owns the native first responder. */
+#elif defined(AURORA)
         SDL_StartTextInput(g_pc_window);
 #else
         SDL_StartTextInput();
@@ -48,7 +50,9 @@ int pc_typing_begin(void) {
 
 void pc_typing_end(void) {
     g_pc_typing_mode = 0;
-#ifdef AURORA
+#if defined(BELLPAD_IOS)
+    /* Bellpad's UIKit proxy owns the native first responder. */
+#elif defined(AURORA)
     SDL_StopTextInput(g_pc_window);
 #else
     SDL_StopTextInput();
