@@ -42,7 +42,7 @@ typedef struct _GXTexObj {
 
 typedef struct _GXTlutObj {
 #ifdef TARGET_PC
-  u32 dummy[4];
+  u32 dummy[10];
 #else
   u32 dummy[3];
 #endif
