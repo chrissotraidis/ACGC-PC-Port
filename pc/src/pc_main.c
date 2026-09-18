@@ -12,6 +12,10 @@
 #include "pc_typing.h"
 #include "pc_pause_menu.h"
 #include "m_kankyo.h"
+#ifdef __APPLE__
+#include "pc_apple.h"
+#include <limits.h>
+#endif
 
 /* prefer discrete GPU on laptops */
 #ifdef _WIN32
@@ -370,14 +374,24 @@ int main(int argc, char* argv[]) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            printf("Usage: AnimalCrossing [options]\n");
+            printf("Usage: Bellpad [options]\n");
             printf("  --verbose, -v       Enable diagnostic output\n");
+            printf("  --disc PATH         Use a supported GAFE01 Rev 0 disc image\n");
             printf("  --framelimit 60     Use the native 60 Hz simulation rate (default)\n");
             printf("  --model-viewer [N]  Launch model viewer (optional start index)\n");
             printf("  --time H[:M[:S]]    Override in-game time (e.g. 5, 17:30, 5:55:00)\n");
             printf("  --rain [intensity]  Force rainy weather; intensity is light, normal, or heavy\n");
             printf("  --help, -h          Show this help message\n");
             return 0;
+        } else if (strcmp(argv[i], "--disc") == 0) {
+            if (i + 1 >= argc || argv[i + 1][0] == '\0') {
+                fprintf(stderr, "--disc requires an image path.\n");
+                return 2;
+            }
+            if (!pc_disc_set_path(argv[++i])) {
+                fprintf(stderr, "Disc image path is too long.\n");
+                return 2;
+            }
         } else if (strcmp(argv[i], "--framelimit") == 0) {
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 int v = atoi(argv[i + 1]);
@@ -521,12 +535,20 @@ int main(int argc, char* argv[]) {
     pc_settings_load();
     pc_keybindings_load();
     pc_platform_init();
-    pc_disc_init();
+    if (!pc_disc_init()) {
+#ifdef __APPLE__
+        char selected_path[PATH_MAX];
+        if (pc_apple_choose_disc(selected_path, sizeof(selected_path)) &&
+            pc_disc_set_path(selected_path)) {
+            pc_disc_init();
+        }
+#endif
+    }
     if (!pc_assets_init()) {
         const char* msg =
             "No game data found.\n\n"
-            "Animal Crossing needs the original GameCube ROM to run.\n"
-            "Place a disc image (.iso, .gcm, or .ciso) to the \"rom\" subfolder.";
+            "Bellpad needs a legally obtained GAFE01 revision 0 disc image.\n"
+            "Choose a supported .iso, .gcm, or .ciso file.";
         fprintf(stderr, "[PC] %s\n", msg);
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                                  "Animal Crossing - Missing ROM", msg, g_pc_window);

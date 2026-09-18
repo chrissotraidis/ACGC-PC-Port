@@ -1,5 +1,8 @@
 /* pc_gx_tev.c - TEV shader: GLSL program loading and uniform upload */
 #include "pc_gx_internal.h"
+#ifdef __APPLE__
+#include "pc_apple.h"
+#endif
 
 /* --- file I/O --- */
 
@@ -30,6 +33,14 @@ static char* load_shader(const char* filename) {
     char path[512];
     snprintf(path, sizeof(path), "shaders/%s", filename);
     char* src = load_text_file(path);
+#ifdef __APPLE__
+    if (!src) {
+        char resource_path[1024];
+        if (pc_apple_resource_path(path, resource_path, sizeof(resource_path))) {
+            src = load_text_file(resource_path);
+        }
+    }
+#endif
     if (src) {
         printf("[PC/TEV] Loaded shader: %s\n", path);
     } else {

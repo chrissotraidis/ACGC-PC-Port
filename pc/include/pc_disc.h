@@ -4,6 +4,11 @@
 
 #include "types.h"
 
+/* Select an explicit image instead of searching the current directory. The
+ * path is copied and remains active until cleared with NULL or an empty path.
+ * Returns 1 when the path fits, 0 when it is too long. */
+int pc_disc_set_path(const char* path);
+
 /* Initialize disc image reader. Searches for .ciso/.iso/.gcm in
  * current dir, orig/, rom/. Parses GCM filesystem into lookup table.
  * Returns 1 on success, 0 if no disc image found. */

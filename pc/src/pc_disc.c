@@ -35,6 +35,7 @@ typedef struct {
 /* ---- global state ---- */
 static DiscFile g_disc;
 static int g_disc_open = 0;
+static char g_explicit_disc_path[1024];
 
 /* DOL info */
 static u32 g_dol_offset = 0;
@@ -163,9 +164,15 @@ static u8* yaz0_decode(const u8* src, u32 src_size, u32* out_size) {
 #define GC_MAGIC 0xC2339F3D
 
 static int gcm_verify(DiscFile* df) {
-    u8 buf[4];
-    disc_read(df, 0x1C, buf, 4);
-    return be32(buf) == GC_MAGIC;
+    u8 header[0x20];
+
+    if (!disc_read(df, 0, header, sizeof(header))) return 0;
+    if (be32(header + 0x1C) != GC_MAGIC) return 0;
+
+    /* Bellpad currently supports the clean USA Rev 0 source baseline only:
+     * GAFE01, disc 0, revision 0. Never silently run another game's data. */
+    return memcmp(header, "GAFE01", 6) == 0 &&
+           header[6] == 0 && header[7] == 0;
 }
 
 static u32 gcm_dol_offset_read(DiscFile* df) {
@@ -312,11 +319,30 @@ static int find_disc_image(char* out_path, int out_sz) {
 
 /* ---- public API ---- */
 
+int pc_disc_set_path(const char* path) {
+    size_t length;
+
+    if (path == NULL || path[0] == '\0') {
+        g_explicit_disc_path[0] = '\0';
+        return 1;
+    }
+
+    length = strlen(path);
+    if (length >= sizeof(g_explicit_disc_path)) return 0;
+    memcpy(g_explicit_disc_path, path, length + 1);
+    return 1;
+}
+
 int pc_disc_init(void) {
     char path[512];
 
     if (g_disc_open) return 1;
-    if (!find_disc_image(path, sizeof(path))) return 0;
+    if (g_explicit_disc_path[0] != '\0') {
+        if (strlen(g_explicit_disc_path) >= sizeof(path)) return 0;
+        strcpy(path, g_explicit_disc_path);
+    } else if (!find_disc_image(path, sizeof(path))) {
+        return 0;
+    }
     if (!disc_open(&g_disc, path)) return 0;
 
     if (!gcm_verify(&g_disc)) {

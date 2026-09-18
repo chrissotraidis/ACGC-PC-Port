@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(ac_pc C CXX)
 
+option(BELLPAD_MACOS_BUNDLE "Build the playable Apple Silicon baseline as Bellpad.app" OFF)
+if(APPLE)
+    enable_language(OBJC)
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -308,6 +313,9 @@ set(PC_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_bc7.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/bc7decomp.cpp
 )
+if(APPLE)
+    list(APPEND PC_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_apple.m)
+endif()
 
 # =============================================================================
 # fixNES — vendored NES emulator (MIT License, by FIX94)
@@ -422,12 +430,25 @@ endif()
 # =============================================================================
 # Build executable
 # =============================================================================
-add_executable(ac_pc
+set(AC_PC_EXECUTABLE_TYPE)
+if(APPLE AND BELLPAD_MACOS_BUNDLE)
+    set(AC_PC_EXECUTABLE_TYPE MACOSX_BUNDLE)
+    set(BELLPAD_SHADER_RESOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders/default.vert
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders/default.frag
+    )
+    set_source_files_properties(${BELLPAD_SHADER_RESOURCES} PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/shaders"
+    )
+endif()
+
+add_executable(ac_pc ${AC_PC_EXECUTABLE_TYPE}
     ${PC_SOURCES}
     ${FIXNES_SOURCES}
     ${GAME_C_SOURCES}
     ${GAME_CXX_SOURCES}
     ${RC_FILE}
+    ${BELLPAD_SHADER_RESOURCES}
 )
 
 # Link SDL2 without SDL2main (we define SDL_MAIN_HANDLED)
@@ -449,9 +470,19 @@ else()
 endif()
 
 set_target_properties(ac_pc PROPERTIES
-    OUTPUT_NAME "AnimalCrossing"
+    OUTPUT_NAME "$<IF:$<BOOL:${BELLPAD_MACOS_BUNDLE}>,Bellpad,AnimalCrossing>"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
+
+if(APPLE AND BELLPAD_MACOS_BUNDLE)
+    set_target_properties(ac_pc PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
+        MACOSX_BUNDLE_BUNDLE_NAME "Bellpad"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "dev.bellpad.app"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1.0"
+        MACOSX_BUNDLE_BUNDLE_VERSION "1"
+    )
+endif()
 
 # Copy shader files to output directory (loaded at runtime, with embedded fallback)
 add_custom_command(TARGET ac_pc POST_BUILD
@@ -505,7 +536,11 @@ endif()
 # =============================================================================
 # Install rules (cmake --install . --prefix <dest>)
 # =============================================================================
-install(TARGETS ac_pc RUNTIME DESTINATION bin)
+if(APPLE AND BELLPAD_MACOS_BUNDLE)
+    install(TARGETS ac_pc BUNDLE DESTINATION .)
+else()
+    install(TARGETS ac_pc RUNTIME DESTINATION bin)
+endif()
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/shaders/"
     DESTINATION bin/shaders
     FILES_MATCHING PATTERN "*.vert" PATTERN "*.frag"
