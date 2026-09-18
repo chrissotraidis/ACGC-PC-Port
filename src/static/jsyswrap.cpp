@@ -317,12 +317,12 @@ extern s16 JW_JUTGamepad_getSubStickAngle() {
 
 static bool FrameDrawing = false;
 
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
 extern "C" void pc_gx_begin_frame(void);
 #endif
 
 extern void JW_BeginFrame() {
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
     /* Clear framebuffer at frame start so we don't see undefined data */
     pc_gx_begin_frame();
     FrameDrawing = true;
@@ -343,7 +343,7 @@ extern void JW_BeginFrame() {
 
 extern void JW_EndFrame() {
     void* mgr = JC_JFWDisplay_getManager();
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
     /* On PC: pump events, swap buffers, vsync via VIWaitForRetrace */
     VIWaitForRetrace();
     FrameDrawing = false;

@@ -15,7 +15,9 @@
 
 #ifdef TARGET_PC
 #include "pc_platform.h"
+#if !defined(AURORA)
 extern "C" void pc_gx_flush_if_begin_complete(void);
+#endif
 
 static jmp_buf pc_dl_crash_jmpbuf;
 
@@ -3211,7 +3213,7 @@ void emu64::dirty_check(int tile, int n_tiles, int do_texture_matrix) {
     EMU64_TIMED_SEGMENT_BEGIN();
     EMU64_ASSERTLINE_DEBUG(this, 4826);
 
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
     /* Flush any pending GX batch BEFORE changing state.
      * Without this, a pending batch (from the previous draw) gets flushed
      * mid-dirty_check when the first GX state call triggers
@@ -3902,8 +3904,13 @@ void emu64::dl_G_SETTILESIZE() {
 }
 
 #ifdef TARGET_PC
+#ifdef AURORA
+extern "C" void AuroraInitTlutObjHost(GXTlutObj* obj, const void* data, GXTlutFmt format, u16 entries);
+static u16 s_tlut_first_word[16];
+#else
 extern "C" void pc_gx_tlut_set_native_le(unsigned int idx);
 extern "C" u16 s_tlut_first_word[16];
+#endif
 #endif
 
 void emu64::dl_G_LOADTLUT() {
@@ -3959,10 +3966,16 @@ void emu64::dl_G_LOADTLUT() {
 #endif
                     }
 
+#ifdef AURORA
+                    AuroraInitTlutObjHost(&this->tlut_objs[tlut_name], aligned_addr, GX_TL_RGB5A3, count);
+#else
                     GXInitTlutObj(&this->tlut_objs[tlut_name], aligned_addr, GX_TL_RGB5A3, count);
+#endif
                     GXLoadTlut(&this->tlut_objs[tlut_name], tlut_name);
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
                     pc_gx_tlut_set_native_le(tlut_name);
+#endif
+#ifdef TARGET_PC
                     s_tlut_first_word[tlut_name] = *(u16*)aligned_addr;
 #endif
 
@@ -4014,9 +4027,13 @@ void emu64::dl_G_LOADTLUT() {
                 if (tlut != nullptr) {
                     while (count != 0) {
                         tlut_addresses[tlut_name] = (void*)addr;
+#ifdef AURORA
+                        AuroraInitTlutObjHost(&this->tlut_objs[tlut_name], tlut, GX_TL_RGB5A3, count);
+#else
                         GXInitTlutObj(&this->tlut_objs[tlut_name], tlut, GX_TL_RGB5A3, count);
+#endif
                         GXLoadTlut(&this->tlut_objs[tlut_name], tlut_name);
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
                         pc_gx_tlut_set_native_le(tlut_name);
 #endif
 
@@ -5471,13 +5488,13 @@ void emu64::dl_G_CULLDL() {
         }
 
         this->cullDL_outside_obj_count++;
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
         pc_emu64_frame_cull_rejected++;
 #endif
     } else {
         EMU64_LOG("カリングされませんでした\n"); /* Translation: Wasn't culled */
         this->cullDL_visible_obj_count++;
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
         pc_emu64_frame_cull_visible++;
 #endif
     }
@@ -5973,7 +5990,7 @@ u32 emu64::emu64_taskstart_r(Gfx* dl_p) {
         }
 
         u8 cmd_index = this->gfx_cmd - G_FIRST_CMD;
-#ifdef TARGET_PC
+#if defined(TARGET_PC) && !defined(AURORA)
         {
             pc_emu64_frame_cmds++;
             /* Track specific command types by opcode */

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(ac_pc C CXX)
 
 option(BELLPAD_MACOS_BUNDLE "Build the playable Apple Silicon baseline as Bellpad.app" OFF)
+option(BELLPAD_AURORA_CORE_PROBE "Compile the game core with Aurora integration enabled" OFF)
 if(APPLE)
     enable_language(OBJC)
 endif()
@@ -440,6 +441,14 @@ if(APPLE AND BELLPAD_MACOS_BUNDLE)
     set_source_files_properties(${BELLPAD_SHADER_RESOURCES} PROPERTIES
         MACOSX_PACKAGE_LOCATION "Resources/shaders"
     )
+endif()
+
+if(BELLPAD_AURORA_CORE_PROBE)
+    add_library(ac_aurora_core_probe OBJECT
+        ${GAME_C_SOURCES}
+        ${GAME_CXX_SOURCES}
+    )
+    target_compile_definitions(ac_aurora_core_probe PRIVATE AURORA)
 endif()
 
 add_executable(ac_pc ${AC_PC_EXECUTABLE_TYPE}
