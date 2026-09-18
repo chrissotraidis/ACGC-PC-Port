@@ -28,3 +28,7 @@ int64_t pc_rtc_counter_ticks(uint64_t counter, uint64_t frequency) {
     return (int64_t)(counter / frequency) * PC_RTC_TIMER_CLOCK +
            (int64_t)((counter % frequency) * PC_RTC_TIMER_CLOCK / frequency);
 }
+
+int64_t pc_rtc_subsecond_ticks(int64_t nanoseconds) {
+    return nanoseconds * PC_RTC_TIMER_CLOCK / 1000000000LL;
+}

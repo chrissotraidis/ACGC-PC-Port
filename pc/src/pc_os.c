@@ -63,10 +63,18 @@ s64 pc_rtc_sync_to_host(void) {
     const s64 counter_ticks = pc_rtc_counter_ticks(counter, frequency);
     const s64 previous_ticks = osGetTime();
     const int was_initialized = host_clock_initialized;
-    time_t unix_now = time(NULL);
+    struct timespec wall_time = {0};
+    time_t unix_now;
     struct tm utc_tm;
     struct tm local_tm;
     s64 utc_offset_seconds = 0;
+
+    if (timespec_get(&wall_time, TIME_UTC) == TIME_UTC) {
+        unix_now = wall_time.tv_sec;
+    } else {
+        unix_now = time(NULL);
+        wall_time.tv_nsec = 0;
+    }
 
 #ifdef _WIN32
     _tzset();
@@ -88,7 +96,8 @@ s64 pc_rtc_sync_to_host(void) {
     const s64 host_ticks = pc_rtc_host_ticks(
         (s64)unix_now, utc_offset_seconds,
         g_pc_time_override, g_pc_min_override, g_pc_sec_override,
-        local_tm.tm_hour, local_tm.tm_min, local_tm.tm_sec);
+        local_tm.tm_hour, local_tm.tm_min, local_tm.tm_sec) +
+        pc_rtc_subsecond_ticks(wall_time.tv_nsec);
     atomic_store_explicit(&host_clock_offset_ticks,
                           (int_fast64_t)(host_ticks - counter_ticks),
                           memory_order_release);

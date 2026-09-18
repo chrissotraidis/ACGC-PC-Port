@@ -19,6 +19,7 @@ int64_t pc_rtc_host_ticks(int64_t unix_seconds,
                           int local_minute,
                           int local_second);
 int64_t pc_rtc_counter_ticks(uint64_t counter, uint64_t frequency);
+int64_t pc_rtc_subsecond_ticks(int64_t nanoseconds);
 
 #ifdef __cplusplus
 }
