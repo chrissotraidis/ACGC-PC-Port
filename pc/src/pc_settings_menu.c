@@ -130,11 +130,9 @@ static void item_cycle(int id, int dir) {
             s_pending.vsync = !s_pending.vsync;
             break;
         case ITEM_MAX_FPS: {
-            static const int steps[] = { 60, 120, 180, 240, 0 };
-            int idx = 0;
-            for (int i = 0; i < 5; i++) if (s_pending.max_fps == steps[i]) { idx = i; break; }
-            idx = (idx + (dir > 0 ? 1 : 4)) % 5;
-            s_pending.max_fps = steps[idx];
+            /* Simulation is coupled to VI retraces; this is intentionally not
+             * a selectable performance/overclock control. */
+            s_pending.max_fps = 60;
         } break;
         case ITEM_MSAA: {
             static const int steps[] = { 0, 2, 4, 8 };
@@ -180,8 +178,7 @@ static void item_format(int id, char* buf, size_t n) {
             snprintf(buf, n, "%s", s_pending.vsync ? "< On >" : "< Off >");
             break;
         case ITEM_MAX_FPS:
-            if (s_pending.max_fps > 0) snprintf(buf, n, "< %d >", s_pending.max_fps);
-            else                       snprintf(buf, n, "< Unlimited >");
+            snprintf(buf, n, "< 60 (Native) >");
             break;
         case ITEM_MSAA:
             if (s_pending.msaa > 0) snprintf(buf, n, "< %dx >", s_pending.msaa);

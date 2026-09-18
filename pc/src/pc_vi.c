@@ -52,11 +52,13 @@ void VIWaitForRetrace(void) {
     Uint64 t_after_swap = SDL_GetPerformanceCounter();
 
     Uint64 t_before_pace = SDL_GetPerformanceCounter();
-    if (!g_pc_no_framelimit) {
-        /* Timer-based pacing: sleep until target frame time.
-         * Audio production runs on a dedicated thread and is no longer
-         * tied to game frame timing. */
-        Uint64 target_us = g_pc_fast_forward ? 8333 : 16667; /* 2x = 120Hz, 1x = 60Hz */
+    /* The game advances simulation from VI retraces. Running this loop above
+     * 60 Hz accelerates gameplay, audio cues, and scripted timing rather than
+     * producing a higher-fidelity presentation. Keep the native simulation
+     * clock fixed at its NTSC 60 Hz cadence. A future high-refresh display
+     * path must interpolate presentation without adding simulation ticks. */
+    {
+        const Uint64 target_us = 16667;
         if (frame_start_time) {
             Uint64 now = SDL_GetPerformanceCounter();
             Uint64 elapsed_us = (now - frame_start_time) * 1000000 / perf_freq;
@@ -92,8 +94,7 @@ void VIWaitForRetrace(void) {
             double secs = (double)(now - fps_start) / (double)perf_freq;
             double fps = (double)fps_count / secs;
             char title[80];
-            snprintf(title, sizeof(title), "Animal Crossing - %.1f FPS%s", fps,
-                     g_pc_fast_forward ? " [2x]" : "");
+            snprintf(title, sizeof(title), "Animal Crossing - %.1f FPS", fps);
             SDL_SetWindowTitle(g_pc_window, title);
             fps_start = now;
             fps_count = 0;

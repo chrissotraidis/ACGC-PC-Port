@@ -225,14 +225,6 @@ void pc_platform_init(void) {
 
 extern void PADCleanup(void);
 
-static void pc_speedhack_toggle(void) {
-    g_pc_fast_forward ^= 1;
-
-    if (g_pc_verbose) {
-        printf("[PC] fast-forward %s\n", g_pc_fast_forward ? "on (2x)" : "off");
-    }
-}
-
 void pc_platform_shutdown(void) {
     pc_audio_shutdown();
     pc_audio_mq_shutdown();
@@ -301,16 +293,8 @@ int pc_platform_poll_events(void) {
                 }
                 break;
             case SDL_KEYDOWN:
-                if (event.key.keysym.sym == SDLK_F3 && !event.key.repeat) {
                 if (!event.key.repeat) {
                     pc_pad_queue_scancode(event.key.keysym.scancode);
-                }
-                    pc_speedhack_toggle();
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_F4 && !event.key.repeat) {
-                    g_pc_fast_forward ^= 1;
-                    printf("[PC] Fast forward %s (2x)\n", g_pc_fast_forward ? "ON" : "OFF");
                 }
                 if (event.key.keysym.sym == SDLK_ESCAPE && !event.key.repeat) {
                     if (g_pc_paused) {
@@ -388,8 +372,7 @@ int main(int argc, char* argv[]) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("Usage: AnimalCrossing [options]\n");
             printf("  --verbose, -v       Enable diagnostic output\n");
-            printf("  --no-framelimit     Alias for --framelimit 0\n");
-            printf("  --framelimit N      Set the target frame rate (default 60, 0 = unlimited)\n");
+            printf("  --framelimit 60     Use the native 60 Hz simulation rate (default)\n");
             printf("  --model-viewer [N]  Launch model viewer (optional start index)\n");
             printf("  --time H[:M[:S]]    Override in-game time (e.g. 5, 17:30, 5:55:00)\n");
             printf("  --rain [intensity]  Force rainy weather; intensity is light, normal, or heavy\n");
@@ -398,15 +381,20 @@ int main(int argc, char* argv[]) {
         } else if (strcmp(argv[i], "--framelimit") == 0) {
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 int v = atoi(argv[i + 1]);
-                if (v > 0) {
-                    g_pc_settings.max_fps = v;
-
-
+                if (v == 60) {
+                    g_pc_settings.max_fps = 60;
+                } else {
+                    fprintf(stderr,
+                            "Only --framelimit 60 is supported: higher or "
+                            "uncapped rates accelerate simulation.\n");
+                    return 2;
                 }
                 i++;
             }
         } else if (strcmp(argv[i], "--no-framelimit") == 0) {
-            g_pc_no_framelimit = 1;
+            fprintf(stderr,
+                    "--no-framelimit is unsupported because it accelerates simulation.\n");
+            return 2;
         } else if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
             g_pc_verbose = 1;
         } else if (strcmp(argv[i], "--model-viewer") == 0) {
