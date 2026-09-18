@@ -172,6 +172,7 @@ static void bellpad_find_image_range(void) {
 }
 
 int pc_platform_poll_events(void) {
+    pc_rtc_poll_host_clock();
 #ifdef BELLPAD_IOS
     static float applied_framebuffer_scale = -1.0f;
     float requested_framebuffer_scale = bellpad_get_framebuffer_scale();
@@ -226,7 +227,15 @@ int pc_platform_poll_events(void) {
         pc_audio_set_paused(1);
         printf("[Lifecycle] Audio paused after UIApplicationWillResignActive\n");
     }
-    if (bellpad_consume_did_become_active()) {
+    int did_become_active = bellpad_consume_did_become_active();
+    int host_clock_changed = bellpad_consume_host_clock_changed();
+    if (did_become_active || host_clock_changed) {
+        s64 adjustment = pc_rtc_sync_to_host();
+        printf("[Lifecycle] RTC synchronized after %s (adjustment %.3f seconds)\n",
+               did_become_active ? "UIApplicationDidBecomeActive" : "host clock/time-zone change",
+               (double)adjustment / (double)GC_TIMER_CLOCK);
+    }
+    if (did_become_active) {
         pc_audio_set_paused(0);
         printf("[Lifecycle] Audio resumed after UIApplicationDidBecomeActive\n");
     }

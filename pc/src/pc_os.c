@@ -1,6 +1,8 @@
 /* pc_os.c - Dolphin OS replacement: arena, timers, threads, message queues */
 #include "pc_platform.h"
+#include "pc_rtc_clock.h"
 
+#include <stdatomic.h>
 #include <time.h>
 
 /* --- Memory arena --- */
@@ -17,17 +19,15 @@ void  OSSetArenaHi(void* hi) { arena_hi = (u8*)hi; }
 u32 pc_OSBusClock  = GC_BUS_CLOCK;
 u32 pc_OSCoreClock = GC_CORE_CLOCK;
 
-static u64 time_base_start = 0;
-static s64 gc_epoch_offset_ticks = 0; /* Ticks from GC epoch to program start */
-
-/* GC epoch: Jan 1, 2000 (946684800 seconds after Unix epoch) */
-#define GC_UNIX_EPOCH_DIFF 946684800LL
+static atomic_int_fast64_t host_clock_offset_ticks;
+static int host_clock_initialized = 0;
+static u64 next_host_clock_poll = 0;
 
 s64 osGetTime(void) {
-    u64 now = SDL_GetPerformanceCounter();
-    u64 freq = SDL_GetPerformanceFrequency();
-    s64 elapsed = (s64)((now - time_base_start) * (u64)GC_TIMER_CLOCK / freq);
-    return gc_epoch_offset_ticks + elapsed;
+    s64 counter_ticks = pc_rtc_counter_ticks(SDL_GetPerformanceCounter(),
+                                             SDL_GetPerformanceFrequency());
+    return (s64)atomic_load_explicit(&host_clock_offset_ticks, memory_order_acquire) +
+           counter_ticks;
 }
 
 s64 OSGetTime(void) { return osGetTime(); }
@@ -40,6 +40,69 @@ u32 osGetCount(void) {
 }
 
 u32 OSGetTick(void) { return osGetCount(); }
+
+static int pc_rtc_copy_gmtime(const time_t* value, struct tm* result) {
+#ifdef _WIN32
+    return gmtime_s(result, value) == 0;
+#else
+    return gmtime_r(value, result) != NULL;
+#endif
+}
+
+static int pc_rtc_copy_localtime(const time_t* value, struct tm* result) {
+#ifdef _WIN32
+    return localtime_s(result, value) == 0;
+#else
+    return localtime_r(value, result) != NULL;
+#endif
+}
+
+s64 pc_rtc_sync_to_host(void) {
+    const u64 counter = SDL_GetPerformanceCounter();
+    const u64 frequency = SDL_GetPerformanceFrequency();
+    const s64 counter_ticks = pc_rtc_counter_ticks(counter, frequency);
+    const s64 previous_ticks = osGetTime();
+    const int was_initialized = host_clock_initialized;
+    time_t unix_now = time(NULL);
+    struct tm utc_tm;
+    struct tm local_tm;
+    s64 utc_offset_seconds = 0;
+
+#ifdef _WIN32
+    _tzset();
+#else
+    tzset();
+#endif
+    if (pc_rtc_copy_gmtime(&unix_now, &utc_tm)) {
+        utc_tm.tm_isdst = -1;
+        time_t utc_as_local = mktime(&utc_tm);
+        if (utc_as_local != (time_t)-1) {
+            utc_offset_seconds = (s64)difftime(unix_now, utc_as_local);
+        }
+    }
+
+    if (!pc_rtc_copy_localtime(&unix_now, &local_tm)) {
+        memset(&local_tm, 0, sizeof(local_tm));
+    }
+
+    const s64 host_ticks = pc_rtc_host_ticks(
+        (s64)unix_now, utc_offset_seconds,
+        g_pc_time_override, g_pc_min_override, g_pc_sec_override,
+        local_tm.tm_hour, local_tm.tm_min, local_tm.tm_sec);
+    atomic_store_explicit(&host_clock_offset_ticks,
+                          (int_fast64_t)(host_ticks - counter_ticks),
+                          memory_order_release);
+    host_clock_initialized = 1;
+    next_host_clock_poll = counter + frequency * 60;
+    return was_initialized ? osGetTime() - previous_ticks : 0;
+}
+
+void pc_rtc_poll_host_clock(void) {
+    const u64 counter = SDL_GetPerformanceCounter();
+    if (counter >= next_host_clock_poll) {
+        (void)pc_rtc_sync_to_host();
+    }
+}
 
 /* --- Calendar time (ported from OSTime.c) --- */
 #define OS_TIMER_CLOCK          GC_TIMER_CLOCK
@@ -286,33 +349,7 @@ void OSInit(void) {
         arena_lo = arena_memory + 0x3100;
         arena_hi = arena_memory + PC_MAIN_MEMORY_SIZE;
     }
-    time_base_start = SDL_GetPerformanceCounter();
-    /* compute ticks from GC epoch (Jan 1, 2000) to now, with timezone */
-    {
-        time_t unix_now = time(NULL);
-
-        struct tm* gmt = gmtime(&unix_now);
-        if (!gmt) { gc_epoch_offset_ticks = 0; return; }
-        struct tm utc_tm = *gmt;
-        utc_tm.tm_isdst = -1; /* let mktime determine DST */
-        time_t utc_as_local = mktime(&utc_tm);
-        s64 tz_offset_secs = (s64)difftime(unix_now, utc_as_local);
-
-        if (g_pc_time_override >= 0) {
-            /* --time H[:M[:S]] override */
-            struct tm* lt = localtime(&unix_now);
-            if (lt) {
-                unix_now += (g_pc_time_override - lt->tm_hour) * 3600;
-                if (g_pc_min_override >= 0)
-                    unix_now += (g_pc_min_override - lt->tm_min) * 60;
-                if (g_pc_sec_override >= 0)
-                    unix_now += (g_pc_sec_override - lt->tm_sec);
-            }
-        }
-
-        s64 gc_secs = (s64)(unix_now - GC_UNIX_EPOCH_DIFF) + tz_offset_secs;
-        gc_epoch_offset_ticks = gc_secs * (s64)GC_TIMER_CLOCK;
-    }
+    (void)pc_rtc_sync_to_host();
 }
 
 void OSInitAlarm(void) { }

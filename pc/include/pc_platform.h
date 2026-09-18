@@ -110,6 +110,8 @@ void pc_platform_shutdown(void);
 void pc_platform_swap_buffers(void);
 int  pc_platform_poll_events(void);
 void pc_pad_queue_scancode(SDL_Scancode scancode);
+s64  pc_rtc_sync_to_host(void);
+void pc_rtc_poll_host_clock(void);
 
 /* --- Crash protection (VEH + setjmp/longjmp) --- */
 void pc_crash_protection_init(void);

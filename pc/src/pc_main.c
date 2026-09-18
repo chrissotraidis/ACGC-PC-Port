@@ -284,6 +284,7 @@ void pc_platform_swap_buffers(void) {
 int pc_platform_poll_events(void) {
     SDL_Event event;
 
+    pc_rtc_poll_host_clock();
     pc_typing_update();
 
     while (SDL_PollEvent(&event)) {
