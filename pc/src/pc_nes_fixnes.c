@@ -39,6 +39,14 @@
 #endif
 #include "fm2play.h"
 #include "audio.h"
+#include "pc_nes_gx_frame.h"
+
+#ifdef AURORA
+#include "dolphin/gx.h"
+#include "dolphin/gx/GXAurora.h"
+#include "dolphin/mtx.h"
+#include "dolphin/os/OSCache.h"
+#endif
 
 /* From pc_gx.c — restore game's GL state after NES emulation */
 extern void pc_gx_restore_after_nes(void);
@@ -93,6 +101,9 @@ extern void AIInitDMA(uintptr_t addr, uint32_t size);
  * GL rendering state
  * ====================================================================== */
 static int fixnes_initialized = 0;
+#ifdef AURORA
+static uint8_t fixnes_gx_texture[PC_NES_GX_TEXTURE_BYTES] __attribute__((aligned(32)));
+#endif
 #ifndef AURORA
 static GLuint fixnes_shader = 0;
 static GLuint fixnes_vao = 0;
@@ -375,15 +386,84 @@ void pc_fixnes_cleanup(void) {
 
     fixnes_initialized = 0;
 
-    /* Restore game's GL state — NES emulator used its own shader/VAO */
+    /* Restore the normal game presentation policy/state. */
+#ifdef AURORA
+    AuroraSetViewportPolicy(AURORA_VIEWPORT_FIT);
+#else
     pc_gx_restore_after_nes();
+#endif
 }
 
 void pc_fixnes_render_frame(uint16_t *fb) {
 #ifdef AURORA
-    /* TODO: upload this RGB565 framebuffer through GX so Aurora presents it
-     * through Metal. NES emulation and audio continue to run meanwhile. */
-    (void)fb;
+    if (!pc_nes_convert_frame_to_gx(fb,
+                                    (size_t)PC_NES_FRAME_WIDTH * PC_NES_FRAME_HEIGHT,
+                                    fixnes_gx_texture, sizeof(fixnes_gx_texture))) {
+        return;
+    }
+
+    /* The source-port setting preserves the desktop behavior: stretch to the
+     * native surface or retain the logical 4:3 framebuffer. */
+    AuroraSetViewportPolicy(pc_settings_get_nes_aspect() == 0
+                                ? AURORA_VIEWPORT_STRETCH
+                                : AURORA_VIEWPORT_FIT);
+
+    Mtx44 projection;
+    f32 identity[3][4] = {
+        { 1.0f, 0.0f, 0.0f, 0.0f },
+        { 0.0f, 1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 1.0f, 0.0f },
+    };
+    GXTexObj texture;
+
+    DCFlushRange(fixnes_gx_texture, sizeof(fixnes_gx_texture));
+    GXInvalidateTexAll();
+    GXInvalidateVtxCache();
+    GXSetViewport(0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
+    GXSetScissor(0, 0, 640, 480);
+    C_MTXOrtho(projection, 0.0f, -480.0f, 0.0f, 640.0f, 0.0f, 2000.0f);
+    GXSetProjection(projection, GX_ORTHOGRAPHIC);
+    GXLoadPosMtxImm(identity, GX_PNMTX0);
+    GXSetCurrentMtx(GX_PNMTX0);
+
+    GXSetClipMode(GX_CLIP_DISABLE);
+    GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+    GXSetColorUpdate(GX_TRUE);
+    GXSetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_COPY);
+    GXSetCullMode(GX_CULL_NONE);
+    GXSetNumChans(0);
+    GXSetNumTexGens(1);
+    GXSetNumTevStages(1);
+    GXSetNumIndStages(0);
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_S16, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_S16, 9);
+
+    GXInitTexObj(&texture, fixnes_gx_texture, PC_NES_FRAME_WIDTH,
+                 PC_NES_VISIBLE_HEIGHT, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, GX_FALSE);
+    GXInitTexObjLOD(&texture, GX_NEAR, GX_NEAR, 0.0f, 0.0f, 0.0f,
+                    GX_FALSE, GX_FALSE, GX_ANISO_1);
+    GXLoadTexObj(&texture, GX_TEXMAP0);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+                      GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
+    GXSetTexCoordScaleManually(GX_TEXCOORD0, GX_FALSE, 0, 0);
+    GXSetTevDirect(GX_TEVSTAGE0);
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
+    GXSetTevOp(GX_TEVSTAGE0, GX_REPLACE);
+    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
+
+    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+    GXPosition2s16(0, 0);
+    GXTexCoord2s16(0, 0);
+    GXPosition2s16(640, 0);
+    GXTexCoord2s16(512, 0);
+    GXPosition2s16(640, -480);
+    GXTexCoord2s16(512, 512);
+    GXPosition2s16(0, -480);
+    GXTexCoord2s16(0, 512);
+    GXEnd();
 #else
     if (!fixnes_shader) fixnes_init_gl();
 
