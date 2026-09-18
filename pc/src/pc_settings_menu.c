@@ -58,7 +58,9 @@ typedef struct {
 
 #define TAB_ITEMS(a) (a), (int)(sizeof(a) / sizeof((a)[0]))
 static const Tab s_tabs[] = {
+#if !defined(BELLPAD_IOS)
     { "Video",    TAB_ITEMS(tab_video_items) },
+#endif
     { "Audio",    TAB_ITEMS(tab_audio_items) },
     { "Gameplay", TAB_ITEMS(tab_gameplay_items) },
 };
