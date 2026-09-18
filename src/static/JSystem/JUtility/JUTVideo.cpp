@@ -24,6 +24,10 @@ void JUTVideo::destroyManager() {
 }
 
 JUTVideo::JUTVideo(const GXRenderModeObj* renderModeObj) {
+#ifdef TARGET_PC
+    mIsSetBlack = false;
+    mSetBlackFrameCount = 0;
+#endif
     mRenderModeObj = nullptr;
     VIInit();
     setRenderMode(renderModeObj);
