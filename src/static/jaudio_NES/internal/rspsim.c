@@ -296,8 +296,15 @@ extern s32 RspStart(Acmd* pTaskCmds, s32 allTasks) {
                     }
                     *var_r6++ = var_r15;
                 }
+#ifdef TARGET_PC
+                s16 state[8] = { 0 };
+                Jac_bcopy(&spC[var_r8 - 4], state, 4 * sizeof(s16));
+                state[4] = var_r7 & 0x7FFF;
+                Jac_bcopy(state, CMD_PTR(cmd), 8 * sizeof(s16));
+#else
                 spC[var_r8] = var_r7 & 0x7FFF;
                 Jac_bcopy(&spC[var_r8 - 4], CMD_PTR(cmd), 8 * sizeof(s16));
+#endif
                 break;
             }
 
