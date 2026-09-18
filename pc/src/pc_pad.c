@@ -11,6 +11,30 @@
 #define RUMBLE_DURATION_MS  200
 
 static SDL_GameController* g_controller = NULL;
+static u16 g_queued_keyboard_buttons = 0;
+static u8 g_queued_keyboard_reads = 0;
+
+void pc_pad_queue_scancode(SDL_Scancode scancode) {
+    PCKeybindings* kb = &g_pc_keybindings;
+
+    if (g_pc_typing_mode && g_pc_editor_active) return;
+
+    if (scancode == kb->a)     g_queued_keyboard_buttons |= PAD_BUTTON_A;
+    if (scancode == kb->b)     g_queued_keyboard_buttons |= PAD_BUTTON_B;
+    if (scancode == kb->x)     g_queued_keyboard_buttons |= PAD_BUTTON_X;
+    if (scancode == kb->y)     g_queued_keyboard_buttons |= PAD_BUTTON_Y;
+    if (scancode == kb->start) g_queued_keyboard_buttons |= PAD_BUTTON_START;
+    if (scancode == kb->z)     g_queued_keyboard_buttons |= PAD_TRIGGER_Z;
+    if (scancode == kb->l)     g_queued_keyboard_buttons |= PAD_TRIGGER_L;
+    if (scancode == kb->r)     g_queued_keyboard_buttons |= PAD_TRIGGER_R;
+    if (scancode == kb->dpad_up)    g_queued_keyboard_buttons |= PAD_BUTTON_UP;
+    if (scancode == kb->dpad_down)  g_queued_keyboard_buttons |= PAD_BUTTON_DOWN;
+    if (scancode == kb->dpad_left)  g_queued_keyboard_buttons |= PAD_BUTTON_LEFT;
+    if (scancode == kb->dpad_right) g_queued_keyboard_buttons |= PAD_BUTTON_RIGHT;
+
+    /* JUTGamePad and padmgr each call PADRead during one game input update. */
+    if (g_queued_keyboard_buttons != 0) g_queued_keyboard_reads = 2;
+}
 
 BOOL PADInit(void) {
     for (int i = 0; i < SDL_NumJoysticks(); i++) {
@@ -71,6 +95,11 @@ u32 PADRead(PADStatus* status) {
         if (INPUT_PRESSED(kb->dpad_right)) buttons |= PAD_BUTTON_RIGHT;
 
         #undef INPUT_PRESSED
+
+        buttons |= g_queued_keyboard_buttons;
+        if (g_queued_keyboard_reads > 0 && --g_queued_keyboard_reads == 0) {
+            g_queued_keyboard_buttons = 0;
+        }
     }
 
     /* hotplug */

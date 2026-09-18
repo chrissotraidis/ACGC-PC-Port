@@ -302,6 +302,9 @@ int pc_platform_poll_events(void) {
                 break;
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_F3 && !event.key.repeat) {
+                if (!event.key.repeat) {
+                    pc_pad_queue_scancode(event.key.keysym.scancode);
+                }
                     pc_speedhack_toggle();
                     break;
                 }
