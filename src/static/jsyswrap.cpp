@@ -330,7 +330,14 @@ extern "C" void pc_gx_begin_frame(void);
 extern void JW_BeginFrame() {
 #ifdef AURORA
     aurora_update();
-    aurora_begin_frame();
+    if (!aurora_begin_frame()) {
+        /* A minimized/backgrounded Apple window has no drawable surface.
+         * Remember that no Aurora frame packet exists so EndFrame can discard
+         * the game's queued GX commands instead of draining them into a null
+         * packet. VIWaitForRetrace below continues pumping lifecycle events. */
+        FrameDrawing = false;
+        return;
+    }
     /* The original JFWDisplay tick wait depends on the GameCube VI message
      * thread. The native PC runtime drives frames synchronously, so entering
      * that wait deadlocks before the first draw. Aurora already owns frame
@@ -368,6 +375,11 @@ extern void JW_BeginFrame() {
 extern void JW_EndFrame() {
     void* mgr = JC_JFWDisplay_getManager();
 #ifdef AURORA
+    if (!FrameDrawing) {
+        GXAbortFrame();
+        VIWaitForRetrace();
+        return;
+    }
     JC_JFWDisplay_endRender(mgr);
     aurora_end_frame();
     VIWaitForRetrace();
