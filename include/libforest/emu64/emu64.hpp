@@ -342,7 +342,11 @@ class aflags_c {
 #endif
 
   private:
+#ifdef TARGET_PC
+    int flags[(AFLAGS_MAX > 0) ? AFLAGS_MAX : 1];
+#else
     int flags[AFLAGS_MAX];
+#endif
 };
 
 class Texture {
