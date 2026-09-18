@@ -60,6 +60,7 @@ extern int boot_main(int argc, const char** argv);
 extern void pc_audio_shutdown(void);
 extern void pc_audio_mq_shutdown(void);
 extern void pc_audio_set_paused(int paused);
+extern void VISetFrameBufferScale(float scale);
 
 static void bellpad_configure_default_keyboard(void) {
     u32 count = 0;
@@ -172,6 +173,17 @@ static void bellpad_find_image_range(void) {
 
 int pc_platform_poll_events(void) {
 #ifdef BELLPAD_IOS
+    static float applied_framebuffer_scale = -1.0f;
+    float requested_framebuffer_scale = bellpad_get_framebuffer_scale();
+    if (requested_framebuffer_scale != applied_framebuffer_scale) {
+        VISetFrameBufferScale(requested_framebuffer_scale);
+        applied_framebuffer_scale = requested_framebuffer_scale;
+        if (requested_framebuffer_scale == 0.0f) {
+            printf("[Graphics] Render resolution: Native\n");
+        } else {
+            printf("[Graphics] Render resolution: %.0fx\n", requested_framebuffer_scale);
+        }
+    }
     pc_typing_update();
     if (g_pc_editor_active && !g_pc_typing_mode) {
         pc_typing_begin();
@@ -203,6 +215,9 @@ int pc_platform_poll_events(void) {
         } else if (event->type == AURORA_WINDOW_RESIZED) {
             g_pc_window_w = (int)event->windowSize.native_fb_width;
             g_pc_window_h = (int)event->windowSize.native_fb_height;
+            printf("[Graphics] Internal framebuffer %ux%u; drawable %ux%u\n",
+                   event->windowSize.fb_width, event->windowSize.fb_height,
+                   event->windowSize.native_fb_width, event->windowSize.native_fb_height);
         }
         ++event;
     }
