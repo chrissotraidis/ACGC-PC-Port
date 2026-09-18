@@ -4,9 +4,13 @@
 
 #include <stdint.h>
 
+#ifdef AURORA
+#include <SDL3/SDL.h>
+#else
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include <glad/gl.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

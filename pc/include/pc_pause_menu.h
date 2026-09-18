@@ -2,7 +2,11 @@
 #ifndef PC_PAUSE_MENU_H
 #define PC_PAUSE_MENU_H
 
+#ifdef AURORA
+#include <SDL3/SDL.h>
+#else
 #include <SDL.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {

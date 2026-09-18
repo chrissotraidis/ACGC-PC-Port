@@ -13,6 +13,9 @@
 #include <dolphin/pad.h>
 
 #include <SDL3/SDL_scancode.h>
+#include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_hints.h>
+#include <SDL3/SDL_stdinc.h>
 
 #include <dlfcn.h>
 #include <mach-o/dyld.h>
@@ -24,6 +27,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#ifdef BELLPAD_IOS
+#include "BellpadGameOverlay.h"
+#endif
 
 struct SDL_Window* g_pc_window = NULL;
 void* g_pc_gl_context = NULL;
@@ -224,11 +232,28 @@ int main(int argc, char* argv[]) {
         .mem1Size = 256 * 1024 * 1024,
         .mem2Size = 16 * 1024 * 1024,
     };
+#ifdef BELLPAD_IOS
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+#endif
     AuroraInfo info = aurora_initialize(argc, argv, &config);
     s_aurora_initialized = true;
     g_pc_window = info.window;
     g_pc_window_w = (int)info.windowSize.native_fb_width;
     g_pc_window_h = (int)info.windowSize.native_fb_height;
+
+#ifdef BELLPAD_IOS
+    bellpad_install_game_overlay();
+#endif
+
+    char* writable_path = SDL_GetPrefPath("Bellpad", "Bellpad");
+    if (!writable_path || chdir(writable_path) != 0) {
+        fprintf(stderr, "Bellpad could not enter its writable Application Support directory.\n");
+        if (writable_path) SDL_free(writable_path);
+        pc_platform_shutdown();
+        return 1;
+    }
+    printf("[Storage] Using %s\n", writable_path);
+    SDL_free(writable_path);
 
     PADInit();
     bellpad_configure_default_keyboard();

@@ -36,7 +36,11 @@ int pc_typing_begin(void) {
     if (!g_pc_editor_active) return 0;
     if (!g_pc_typing_mode) {
         g_pc_typing_mode = 1;
+#ifdef AURORA
+        SDL_StartTextInput(g_pc_window);
+#else
         SDL_StartTextInput();
+#endif
         pc_typing_queue_clear();
     }
     return 1;
@@ -44,7 +48,11 @@ int pc_typing_begin(void) {
 
 void pc_typing_end(void) {
     g_pc_typing_mode = 0;
+#ifdef AURORA
+    SDL_StopTextInput(g_pc_window);
+#else
     SDL_StopTextInput();
+#endif
 }
 
 /* Map a UTF-8 character from SDL_TEXTINPUT to an AC game character code.
@@ -151,8 +159,14 @@ int pc_typing_command(int command) {
 }
 
 void pc_typing_handle_event(const SDL_Event* event) {
+#ifdef AURORA
+    if (event->type == SDL_EVENT_KEY_DOWN) {
+        SDL_Keycode key = event->key.key;
+#else
     if (event->type == SDL_KEYDOWN) {
-        if (event->key.keysym.sym == SDLK_TAB && !event->key.repeat && g_pc_editor_active) {
+        SDL_Keycode key = event->key.keysym.sym;
+#endif
+        if (key == SDLK_TAB && !event->key.repeat && g_pc_editor_active) {
             if (g_pc_typing_mode) {
                 pc_typing_end();
             } else {
@@ -161,7 +175,7 @@ void pc_typing_handle_event(const SDL_Event* event) {
         }
 
         if (g_pc_typing_mode && g_pc_editor_active) {
-            switch (event->key.keysym.sym) {
+            switch (key) {
                 case SDLK_BACKSPACE: pc_typing_command(PC_TYPING_CMD_BACKSPACE); break;
                 case SDLK_RETURN:
                 case SDLK_KP_ENTER:  pc_typing_command(PC_TYPING_CMD_ENTER); break;
@@ -174,7 +188,11 @@ void pc_typing_handle_event(const SDL_Event* event) {
         }
     }
 
+#ifdef AURORA
+    if (event->type == SDL_EVENT_TEXT_INPUT && g_pc_typing_mode && g_pc_editor_active) {
+#else
     if (event->type == SDL_TEXTINPUT && g_pc_typing_mode && g_pc_editor_active) {
+#endif
         pc_typing_commit_utf8(event->text.text);
     }
 }

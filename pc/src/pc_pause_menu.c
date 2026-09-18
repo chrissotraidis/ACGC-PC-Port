@@ -12,6 +12,17 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef AURORA
+#undef SDLK_a
+#undef SDLK_d
+#undef SDLK_s
+#undef SDLK_w
+#define SDLK_a SDLK_A
+#define SDLK_d SDLK_D
+#define SDLK_s SDLK_S
+#define SDLK_w SDLK_W
+#endif
+
 int g_pc_paused = 0;
 
 /* Pausing is blocked while either is set: main menu (set by ac_animal_logo)
@@ -78,10 +89,18 @@ static void confirm_activate(void) {
 
 int pc_pause_menu_handle_event(const SDL_Event* e) {
     if (!g_pc_paused) return 0;
+#ifdef AURORA
+    if (e->type != SDL_EVENT_KEY_DOWN) return 0;
+#else
     if (e->type != SDL_KEYDOWN) return 0;
+#endif
     if (e->key.repeat) return 1;
 
+#ifdef AURORA
+    SDL_Keycode k = e->key.key;
+#else
     SDL_Keycode k = e->key.keysym.sym;
+#endif
 
     /* Settings page is driven by pc_settings_menu. */
     if (cur_page == PAGE_SETTINGS) {

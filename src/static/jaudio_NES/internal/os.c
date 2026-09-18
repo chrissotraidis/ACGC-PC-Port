@@ -4,8 +4,16 @@
 #include "jaudio_NES/sample.h"
 
 #ifdef TARGET_PC
+#ifdef AURORA
+#include <SDL3/SDL.h>
+#else
 #include <SDL.h>
+#endif
+#ifdef AURORA
+static SDL_Mutex* z_mq_mutex = NULL;
+#else
 static SDL_mutex* z_mq_mutex = NULL;
+#endif
 
 void pc_audio_mq_init(void) {
     if (!z_mq_mutex) z_mq_mutex = SDL_CreateMutex();

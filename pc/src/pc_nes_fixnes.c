@@ -31,9 +31,12 @@
 #undef BUTTON_LEFT
 #undef BUTTON_RIGHT
 
-/* Now include GL via SDL2 (avoid pc_platform.h which pulls in game types.h) */
+/* The legacy renderer presents the NES framebuffer through OpenGL. Aurora
+ * keeps the emulator and audio path but needs a GX/Metal presentation path. */
+#ifndef AURORA
 #include <SDL2/SDL.h>
 #include <glad/gl.h>
+#endif
 #include "fm2play.h"
 #include "audio.h"
 
@@ -89,13 +92,13 @@ extern void AIInitDMA(uintptr_t addr, uint32_t size);
 /* ======================================================================
  * GL rendering state
  * ====================================================================== */
+static int fixnes_initialized = 0;
+#ifndef AURORA
 static GLuint fixnes_shader = 0;
 static GLuint fixnes_vao = 0;
 static GLuint fixnes_vbo = 0;
 static GLuint fixnes_texture = 0;
 static GLint fixnes_tex_uniform = -1;
-static int fixnes_initialized = 0;
-
 static GLuint fixnes_compile_shader(GLenum type, const char *src) {
     GLuint s = glCreateShader(type);
     glShaderSource(s, 1, &src, NULL);
@@ -161,6 +164,7 @@ static void fixnes_init_gl(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
+#endif
 
 /* ======================================================================
  * Audio buffer capture — convert fixNES APU output to stereo s16 for
@@ -376,6 +380,11 @@ void pc_fixnes_cleanup(void) {
 }
 
 void pc_fixnes_render_frame(uint16_t *fb) {
+#ifdef AURORA
+    /* TODO: upload this RGB565 framebuffer through GX so Aurora presents it
+     * through Metal. NES emulation and audio continue to run meanwhile. */
+    (void)fb;
+#else
     if (!fixnes_shader) fixnes_init_gl();
 
     /* Upload framebuffer — fixNES outputs RGB565 with COL_TEX_BSWAP
@@ -421,4 +430,5 @@ void pc_fixnes_render_frame(uint16_t *fb) {
     glBindVertexArray(0);
 
     glViewport(0, 0, win_w, win_h);
+#endif
 }
