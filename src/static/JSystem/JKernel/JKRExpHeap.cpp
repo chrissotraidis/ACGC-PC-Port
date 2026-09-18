@@ -94,7 +94,7 @@ JKRExpHeap::JKRExpHeap(void* p1, u32 p2, JKRHeap* p3, bool p4) : JKRHeap(p1, p2,
     mCurrentGroupID = 0xFF;
     mHead = static_cast<CMemBlock*>(p1);
     mTail = mHead;
-    mHead->initiate(nullptr, nullptr, p2 - 0x10, 0, 0);
+    mHead->initiate(nullptr, nullptr, p2 - sizeof(CMemBlock), 0, 0);
     mHeadUsedList = nullptr;
     mTailUsedList = nullptr;
 }

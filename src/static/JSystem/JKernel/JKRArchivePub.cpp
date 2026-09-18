@@ -11,7 +11,7 @@
 // TODO: this file should emit a vtable but it doesn't, luckily JKRArchivePri
 // does that and it doesn't cause any issues
 
-JKRArchive* JKRArchive::check_mount_already(s32 entryNum, JKRHeap* pHeap) {
+JKRArchive* JKRArchive::check_mount_already(intptr_t entryNum, JKRHeap* pHeap) {
     // UNUSED FUNCTION
     JKRHeap* heap = pHeap;
     if (heap == nullptr) {
@@ -31,7 +31,7 @@ JKRArchive* JKRArchive::check_mount_already(s32 entryNum, JKRHeap* pHeap) {
     return nullptr;
 }
 
-JKRArchive* JKRArchive::check_mount_already(s32 entryNum) {
+JKRArchive* JKRArchive::check_mount_already(intptr_t entryNum) {
     for (JSUListIterator<JKRFileLoader> iterator = sVolumeList.getFirst(); iterator != sVolumeList.getEnd();
          ++iterator) {
         if (iterator->getVolumeType() == 'RARC') {
@@ -82,7 +82,7 @@ JKRArchive* JKRArchive::mount(const char* path, EMountMode mode, JKRHeap* heap, 
 }
 
 JKRArchive* JKRArchive::mount(void* p1, JKRHeap* heap, EMountDirection mountDirection) {
-    JKRArchive* archive = check_mount_already((s32)p1, heap);
+    JKRArchive* archive = check_mount_already((intptr_t)p1, heap);
     if (archive != nullptr) {
         return archive;
     }

@@ -201,7 +201,7 @@ class JKRArchive : public JKRFileLoader {
     virtual void* fetchResource(void* resourceBuffer, u32 bufferSize, SDIFileEntry* entry, u32* resSize,
                                 JKRExpandSwitch expandSwitch) = 0; // _44
 
-    JKRArchive(s32, EMountMode);
+    JKRArchive(intptr_t, EMountMode);
     JKRArchive();
     JKRArchive(const char* p1, EMountMode mountMode);
     ~JKRArchive();
@@ -223,8 +223,8 @@ class JKRArchive : public JKRFileLoader {
     static JKRArchive* mount(void*, JKRHeap*, EMountDirection);
     static JKRArchive* mount(s32, EMountMode, JKRHeap*, EMountDirection);
     static void* getGlbResource(u32 type, const char* name, JKRArchive* archive);
-    static JKRArchive* check_mount_already(s32);
-    static JKRArchive* check_mount_already(s32, JKRHeap*);
+    static JKRArchive* check_mount_already(intptr_t);
+    static JKRArchive* check_mount_already(intptr_t, JKRHeap*);
 
     SDIDirEntry* findResType(u32) const;
     SDIFileEntry* findTypeResource(u32, u32) const;
@@ -264,7 +264,7 @@ class JKRArchive : public JKRFileLoader {
     // _00-_38 = JKRFileLoader
     JKRHeap* mHeap;                  // _38
     u8 mMountMode;                   // _3C
-    s32 mEntryNum;                   // _40
+    intptr_t mEntryNum;              // _40 (pointer-sized for memory-backed archives on host)
     SArcDataInfo* mArcInfoBlock;     // _44
     SDIDirEntry* mDirectories;       // _48
     SDIFileEntry* mFileEntries;      // _4C

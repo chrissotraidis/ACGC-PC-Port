@@ -329,16 +329,16 @@ static inline bool pc_is_arena_ptr(void* p) {
     return (addr >= base && addr < base + (48u * 1024u * 1024u));
 }
 
-void* operator new(u32 byteCount) {
+void* operator new(size_t byteCount) {
     return malloc(byteCount);
 }
-void* operator new(u32 byteCount, int alignment) {
+void* operator new(size_t byteCount, int alignment) {
     return malloc(byteCount);
 }
-void* operator new[](u32 byteCount) {
+void* operator new[](size_t byteCount) {
     return malloc(byteCount);
 }
-void* operator new[](u32 byteCount, int alignment) {
+void* operator new[](size_t byteCount, int alignment) {
     return malloc(byteCount);
 }
 void operator delete(void* memory) {
@@ -359,16 +359,16 @@ void operator delete[](void* memory, size_t) {
     free(memory);
 }
 #else
-void* operator new(u32 byteCount) {
+void* operator new(size_t byteCount) {
     return JKRHeap::alloc(byteCount, 4, nullptr);
 }
-void* operator new(u32 byteCount, int alignment) {
+void* operator new(size_t byteCount, int alignment) {
     return JKRHeap::alloc(byteCount, alignment, nullptr);
 }
-void* operator new[](u32 byteCount) {
+void* operator new[](size_t byteCount) {
     return JKRHeap::alloc(byteCount, 4, nullptr);
 }
-void* operator new[](u32 byteCount, int alignment) {
+void* operator new[](size_t byteCount, int alignment) {
     return JKRHeap::alloc(byteCount, alignment, nullptr);
 }
 void operator delete(void* memory) {
@@ -378,10 +378,10 @@ void operator delete[](void* memory) {
     JKRHeap::free(memory, nullptr);
 }
 #endif
-void* operator new(u32 byteCount, JKRHeap* heap, int alignment) {
+void* operator new(size_t byteCount, JKRHeap* heap, int alignment) {
     return JKRHeap::alloc(byteCount, alignment, heap);
 }
-void* operator new[](u32 byteCount, JKRHeap* heap, int alignment) {
+void* operator new[](size_t byteCount, JKRHeap* heap, int alignment) {
     return JKRHeap::alloc(byteCount, alignment, heap);
 }
 #ifdef TARGET_PC

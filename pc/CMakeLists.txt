@@ -388,13 +388,6 @@ set_source_files_properties(
 set(DECOMP_WARN_FLAGS "-w;-fpermissive;-Wno-return-type;-Wno-error=return-type")
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     list(APPEND DECOMP_WARN_FLAGS "-Wno-c99-designator" "-Wno-initializer-overrides")
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        message(FATAL_ERROR
-            "64-bit builds require GCC (Clang rejects pointer-to-u32 truncation in GBI static initializers).\n"
-            "  macOS:  brew install gcc && cmake .. -DCMAKE_C_COMPILER=gcc-15 -DCMAKE_CXX_COMPILER=g++-15\n"
-            "          (adjust version number to match installed GCC, e.g. gcc-14/g++-14)\n"
-            "  Linux:  GCC is typically the default compiler.")
-    endif()
 endif()
 set_source_files_properties(${GAME_C_SOURCES} ${GAME_CXX_SOURCES}
     PROPERTIES COMPILE_OPTIONS "${DECOMP_WARN_FLAGS}"

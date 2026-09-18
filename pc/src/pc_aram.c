@@ -1,5 +1,6 @@
 /* pc_aram.c - GC's 16MB auxiliary RAM, replaced with a malloc'd buffer */
 #include "pc_platform.h"
+#include "dolphin/ar.h"
 
 static u8* aram_base = NULL;
 static u32 aram_alloc_ptr = 0;
@@ -24,7 +25,7 @@ u32 ARGetSize(void) { return PC_ARAM_SIZE; }
 uintptr_t ARAlloc(u32 size) {
     u32 aligned_size = (size + 31) & ~31; /* 32-byte align */
     if (aram_alloc_ptr + aligned_size > PC_ARAM_SIZE) {
-        fprintf(stderr, "[PC/ARAM] Out of ARAM! Requested %lu, used %lu/%u\n",
+        fprintf(stderr, "[PC/ARAM] Out of ARAM! Requested %u, used %u/%u\n",
                 size, aram_alloc_ptr, PC_ARAM_SIZE);
         return 0;
     }
@@ -33,8 +34,9 @@ uintptr_t ARAlloc(u32 size) {
     return addr;
 }
 
-void ARFree(u32* addr) {
+u32 ARFree(u32* addr) {
     (void)addr; /* bump allocator, no-op */
+    return 0;
 }
 
 /* type 0 = MRAM→ARAM, type 1 = ARAM→MRAM. params are always (type, mram, aram). */
@@ -72,13 +74,13 @@ BOOL ARCheckInit(void) { return aram_base != NULL; }
  * ARQPostRequest's source/dest order differs from ARStartDMA's, so we remap. */
 void ARQInit(void) {}
 void ARQPostRequest(void* req, uintptr_t owner, u32 type, u32 prio,
-                    uintptr_t source, uintptr_t dest, u32 length, void* callback) {
+                    uintptr_t source, uintptr_t dest, u32 length, ARQCallback callback) {
     if (type == 0) {
         ARStartDMA(type, source, dest, length); /* source=mram, dest=aram */
     } else {
         ARStartDMA(type, dest, source, length); /* source=aram, dest=mram — swapped */
     }
-    if (callback) ((void (*)(uintptr_t))callback)((uintptr_t)req);
+    if (callback) callback((uintptr_t)req);
 }
 
 void ARQFlushQueue(void) {}

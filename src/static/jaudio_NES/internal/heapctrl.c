@@ -16,7 +16,11 @@ static u32 global_id = 0;
  * Address:	8000E9C0
  * Size:	000034
  */
+#ifdef TARGET_PC
+static void ARAMFinish(uintptr_t msg)
+#else
 static void ARAMFinish(u32 msg)
+#endif
 {
 	// STACK_PAD_VAR(1);
 	u32* REF_param_1;
@@ -401,7 +405,7 @@ BOOL Jac_DeleteHeap(jaheap_* heap)
 		if (heap2 == heap) {
 			heap->parent->firstChild = heap->nextSibling;
 			if (heap->nextSibling == NULL) {
-				heap->parent->usedSize = NULL;
+				heap->parent->usedSize = 0;
 			}
 		} else {
 			while (TRUE) {

@@ -336,6 +336,7 @@ const SOU_LEV_ONGEN_DATA sou_lev_ongen_data_init = {
     0,0,0,0,
     0,
     0,0,
+    {0,0},
     9999.f,
     9999.f
 };
@@ -1858,7 +1859,7 @@ void Na_InitAudio(void (*fatal_callback)(), u8* load_addr, size_t load_size, u8*
     u32 unused = SetPreCopy_NeosRom(load_addr, load_size, cut_flag);
     Jac_RegisterDVDErrorCallback(Sou_DVD_Error);
     Jac_Start(audiomemory, sizeof(audiomemory), v);
-    BootSound((u32)bootsound, bootsound_size);
+    BootSound((Jac_DVDAddress)bootsound, bootsound_size);
     sou_NeosBootCheck_ok = 1;
 }
 

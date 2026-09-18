@@ -27,7 +27,7 @@ JKRMemArchive::JKRMemArchive(s32 entryNum, EMountDirection mountDirection) : JKR
     }
 }
 
-JKRMemArchive::JKRMemArchive(void* mem, u32 size, JKRMemBreakFlag breakFlag) : JKRArchive((s32)mem, MOUNT_MEM) {
+JKRMemArchive::JKRMemArchive(void* mem, u32 size, JKRMemBreakFlag breakFlag) : JKRArchive((intptr_t)mem, MOUNT_MEM) {
     mIsMounted = false;
     if (!open(mem, size, breakFlag)) {
         return;

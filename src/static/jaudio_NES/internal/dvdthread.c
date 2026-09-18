@@ -8,10 +8,10 @@
 #include "dolphin/os/OSTime.h"
 
 typedef struct DVDCall_ {
-    u32 owner;
+    Jac_DVDAddress owner;
     char fileName[64];
-    u32 dst;
-    u32 src;
+    Jac_DVDAddress dst;
+    Jac_DVDAddress src;
     u32 length;
     u32* callbackStatus;
     Jac_DVDCallback callback;
@@ -195,7 +195,8 @@ extern s32 DVDT_LoadtoARAM_Main(void* arg) {
     return 0;
 }
 
-extern s32 DVDT_LoadtoARAM(u32 owner, char* name, u32 dst, u32 src, u32 length, u32* status, Jac_DVDCallback callback) {
+extern s32 DVDT_LoadtoARAM(Jac_DVDAddress owner, char* name, Jac_DVDAddress dst, Jac_DVDAddress src, u32 length,
+                           u32* status, Jac_DVDCallback callback) {
     DVDCall call;
     call.owner = owner;
     DVDT_ExtendPath(call.fileName, name);
@@ -206,7 +207,7 @@ extern s32 DVDT_LoadtoARAM(u32 owner, char* name, u32 dst, u32 src, u32 length, 
     call.src = src;
     call.length = length;
 
-    DVDT_AddTask(DVDT_LoadtoARAM_Main, (void*)&call, 0x58);
+    DVDT_AddTask(DVDT_LoadtoARAM_Main, (void*)&call, sizeof(call));
     return 0;
 }
 
@@ -226,7 +227,8 @@ extern s32 DVDT_DRAMtoARAM_Main(void* arg) {
     return 0;
 }
 
-extern s32 DVDT_ARAMtoDRAM(u32 owner, u32 dst, u32 src, u32 length, u32* status, Jac_DVDCallback callback) {
+extern s32 DVDT_ARAMtoDRAM(Jac_DVDAddress owner, Jac_DVDAddress dst, Jac_DVDAddress src, u32 length, u32* status,
+                           Jac_DVDCallback callback) {
     DVDCall call;
     call.owner = owner;
     call.dst = dst;
@@ -235,11 +237,12 @@ extern s32 DVDT_ARAMtoDRAM(u32 owner, u32 dst, u32 src, u32 length, u32* status,
     call.callback = callback;
     call.src = src;
     call.length = length;
-    DVDT_AddTaskHigh(DVDT_ARAMtoDRAM_Main, (void*)&call, 0x58);
+    DVDT_AddTaskHigh(DVDT_ARAMtoDRAM_Main, (void*)&call, sizeof(call));
     return 0;
 }
 
-extern s32 DVDT_DRAMtoARAM(u32 owner, u32 dst, u32 src, u32 length, u32* status, Jac_DVDCallback callback) {
+extern s32 DVDT_DRAMtoARAM(Jac_DVDAddress owner, Jac_DVDAddress dst, Jac_DVDAddress src, u32 length, u32* status,
+                           Jac_DVDCallback callback) {
     DVDCall call;
     call.owner = owner;
     call.dst = dst;
@@ -248,7 +251,7 @@ extern s32 DVDT_DRAMtoARAM(u32 owner, u32 dst, u32 src, u32 length, u32* status,
     call.callback = callback;
     call.src = src;
     call.length = length;
-    DVDT_AddTaskHigh(DVDT_DRAMtoARAM_Main, (void*)&call, 0x58);
+    DVDT_AddTaskHigh(DVDT_DRAMtoARAM_Main, (void*)&call, sizeof(call));
     return 0;
 }
 
@@ -508,7 +511,8 @@ extern s32 DVDT_LoadtoARAM_Main(void* arg) {
     return 0;
 }
 
-extern s32 DVDT_LoadtoARAM(u32 owner, char* name, u32 dst, u32 src, u32 length, u32* status, Jac_DVDCallback callback) {
+extern s32 DVDT_LoadtoARAM(Jac_DVDAddress owner, char* name, Jac_DVDAddress dst, Jac_DVDAddress src, u32 length,
+                           u32* status, Jac_DVDCallback callback) {
     DVDCall call;
     void* cb = (void*)&call;
 
@@ -570,7 +574,8 @@ extern s32 DVDT_DRAMtoARAM_Main(void* arg) {
     return 0;
 }
 
-extern s32 DVDT_ARAMtoDRAM(u32 owner, u32 dst, u32 src, u32 length, u32* status, Jac_DVDCallback callback) {
+extern s32 DVDT_ARAMtoDRAM(Jac_DVDAddress owner, Jac_DVDAddress dst, Jac_DVDAddress src, u32 length, u32* status,
+                           Jac_DVDCallback callback) {
     DVDCall call;
     void* cb = (void*)&call;
 
@@ -591,7 +596,8 @@ extern s32 DVDT_ARAMtoDRAM(u32 owner, u32 dst, u32 src, u32 length, u32* status,
     return 0;
 }
 
-extern s32 DVDT_DRAMtoARAM(u32 owner, u32 dst, u32 src, u32 length, u32* status, Jac_DVDCallback callback) {
+extern s32 DVDT_DRAMtoARAM(Jac_DVDAddress owner, Jac_DVDAddress dst, Jac_DVDAddress src, u32 length, u32* status,
+                           Jac_DVDCallback callback) {
     DVDCall call;
     void* cb = (void*)&call;
 
@@ -632,7 +638,7 @@ extern s32 DVDT_CheckFile(char* file) {
     return len;
 }
 
-extern s32 DVDT_CheckPass(u32 owner, u32* status, Jac_DVDCallback callback) {
+extern s32 DVDT_CheckPass(Jac_DVDAddress owner, u32* status, Jac_DVDCallback callback) {
     DVDCall call;
     void* cb = (void*)&call;
 
@@ -640,7 +646,7 @@ extern s32 DVDT_CheckPass(u32 owner, u32* status, Jac_DVDCallback callback) {
     call.callbackStatus = status;
     call.callback = callback;
 
-    return DVDT_AddTask((TaskCallback)__DVDT_CheckBack, cb, 0x58);
+    return DVDT_AddTask((TaskCallback)__DVDT_CheckBack, cb, sizeof(call));
 }
 
 extern s32 Jac_CheckFile(char* file) {

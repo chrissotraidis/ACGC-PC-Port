@@ -160,6 +160,8 @@ static int* mMpswd_select_idx_table[16] = {
 };
 
 static void mMpswd_bit_shift(u8* pswd, int shift) {
+    extern int __abs(int);
+
     u8 buf[mMpswd_PASSWORD_DATA_LEN - 1];
     u8 shifted_buf[mMpswd_PASSWORD_DATA_LEN - 1];
     int bytes_shifted;

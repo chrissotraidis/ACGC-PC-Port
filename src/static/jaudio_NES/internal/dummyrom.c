@@ -37,7 +37,7 @@ extern u32 SetPreCopy_NeosRom(u8* load_addr, u32 load_size, BOOL cut_flag) {
     init_cut_flag = cut_flag;
 }
 
-extern void mesg_finishcall(u32 mq) {
+extern void mesg_finishcall(Jac_DVDAddress mq) {
     Z_osSendMesg((OSMesgQueue*)mq, NULL, OS_MESSAGE_NOBLOCK);
 }
 
