@@ -9,6 +9,10 @@
 #include <aurora/event.h>
 #include <aurora/main.h>
 
+#include <dolphin/pad.h>
+
+#include <SDL3/SDL_scancode.h>
+
 #include <dlfcn.h>
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
@@ -45,6 +49,44 @@ extern void ac_entry(void);
 extern int boot_main(int argc, const char** argv);
 extern void pc_audio_shutdown(void);
 extern void pc_audio_mq_shutdown(void);
+
+static void bellpad_configure_default_keyboard(void) {
+    u32 count = 0;
+    if (PADGetKeyButtonBindings(PAD_CHAN0, &count) != NULL) {
+        return;
+    }
+
+    PADKeyButtonBinding buttons[PAD_BUTTON_COUNT] = {
+        {SDL_SCANCODE_SPACE, PAD_BUTTON_A},
+        {SDL_SCANCODE_LSHIFT, PAD_BUTTON_B},
+        {SDL_SCANCODE_X, PAD_BUTTON_X},
+        {SDL_SCANCODE_Y, PAD_BUTTON_Y},
+        {SDL_SCANCODE_RETURN, PAD_BUTTON_START},
+        {SDL_SCANCODE_Z, PAD_TRIGGER_Z},
+        {SDL_SCANCODE_Q, PAD_TRIGGER_L},
+        {SDL_SCANCODE_E, PAD_TRIGGER_R},
+        {SDL_SCANCODE_I, PAD_BUTTON_UP},
+        {SDL_SCANCODE_K, PAD_BUTTON_DOWN},
+        {SDL_SCANCODE_J, PAD_BUTTON_LEFT},
+        {SDL_SCANCODE_L, PAD_BUTTON_RIGHT},
+    };
+    PADKeyAxisBinding axes[PAD_AXIS_COUNT] = {
+        {SDL_SCANCODE_D, PAD_AXIS_LEFT_X_POS, 100},
+        {SDL_SCANCODE_A, PAD_AXIS_LEFT_X_NEG, 100},
+        {SDL_SCANCODE_W, PAD_AXIS_LEFT_Y_POS, 100},
+        {SDL_SCANCODE_S, PAD_AXIS_LEFT_Y_NEG, 100},
+        {SDL_SCANCODE_RIGHT, PAD_AXIS_RIGHT_X_POS, 100},
+        {SDL_SCANCODE_LEFT, PAD_AXIS_RIGHT_X_NEG, 100},
+        {SDL_SCANCODE_UP, PAD_AXIS_RIGHT_Y_POS, 100},
+        {SDL_SCANCODE_DOWN, PAD_AXIS_RIGHT_Y_NEG, 100},
+        {SDL_SCANCODE_Q, PAD_AXIS_TRIGGER_L, 100},
+        {SDL_SCANCODE_E, PAD_AXIS_TRIGGER_R, 100},
+    };
+
+    PADSetKeyButtonBindings(PAD_CHAN0, buttons);
+    PADSetKeyAxisBindings(PAD_CHAN0, axes);
+    PADSetKeyboardActive(PAD_CHAN0, TRUE);
+}
 
 static void bellpad_crash_handler(int signal_number, siginfo_t* info, void* context) {
     (void)context;
@@ -185,6 +227,9 @@ int main(int argc, char* argv[]) {
     g_pc_window = info.window;
     g_pc_window_w = (int)info.windowSize.native_fb_width;
     g_pc_window_h = (int)info.windowSize.native_fb_height;
+
+    PADInit();
+    bellpad_configure_default_keyboard();
 
     pc_settings_load();
     if (!pc_disc_init() || !pc_assets_init()) {

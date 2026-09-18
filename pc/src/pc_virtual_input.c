@@ -1,5 +1,9 @@
 #include "pc_virtual_input.h"
 
+#ifdef AURORA
+#include <dolphin/pad.h>
+#endif
+
 PCVirtualPadState g_pc_virtual_pad_state = {0};
 
 void pc_pad_set_virtual_state(u16 buttons, s8 stick_x, s8 stick_y, s8 cstick_x, s8 cstick_y, u8 trigger_left,
@@ -11,8 +15,23 @@ void pc_pad_set_virtual_state(u16 buttons, s8 stick_x, s8 stick_y, s8 cstick_x, 
     g_pc_virtual_pad_state.cstick_y = cstick_y;
     g_pc_virtual_pad_state.trigger_left = trigger_left;
     g_pc_virtual_pad_state.trigger_right = trigger_right;
+#ifdef AURORA
+    PADStatus status = {0};
+    status.button = buttons;
+    status.stickX = stick_x;
+    status.stickY = stick_y;
+    status.substickX = cstick_x;
+    status.substickY = cstick_y;
+    status.triggerLeft = trigger_left;
+    status.triggerRight = trigger_right;
+    status.err = PAD_ERR_NONE;
+    PADSetVirtualStatus(PAD_CHAN0, &status);
+#endif
 }
 
 void pc_pad_clear_virtual_state(void) {
     pc_pad_set_virtual_state(0, 0, 0, 0, 0, 0, 0);
+#ifdef AURORA
+    PADClearVirtualStatus(PAD_CHAN0);
+#endif
 }

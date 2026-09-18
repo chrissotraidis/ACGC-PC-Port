@@ -20,6 +20,10 @@ extern "C" {
 
 #define PAD_CHAN0_BIT 0x80000000
 
+#ifdef AURORA
+#define PAD_CHAN0 0
+#endif
+
 #define PAD_MAX_CONTROLLERS     4
 
 #define PAD_BUTTON_LEFT  (1 << 0)   // 0x0001
@@ -35,6 +39,22 @@ extern "C" {
 #define PAD_BUTTON_Y     (1 << 11)  // 0x0800
 #define PAD_BUTTON_MENU  (1 << 12)  // 0x1000
 #define PAD_BUTTON_START (1 << 12)  // 0x1000
+
+#ifdef AURORA
+#define PAD_BUTTON_COUNT 12
+
+#define PAD_AXIS_LEFT_X_POS 0
+#define PAD_AXIS_LEFT_X_NEG 1
+#define PAD_AXIS_LEFT_Y_POS 2
+#define PAD_AXIS_LEFT_Y_NEG 3
+#define PAD_AXIS_RIGHT_X_POS 4
+#define PAD_AXIS_RIGHT_X_NEG 5
+#define PAD_AXIS_RIGHT_Y_POS 6
+#define PAD_AXIS_RIGHT_Y_NEG 7
+#define PAD_AXIS_TRIGGER_L 8
+#define PAD_AXIS_TRIGGER_R 9
+#define PAD_AXIS_COUNT 10
+#endif
 
 #define PAD_ERR_NONE 0
 #define PAD_ERR_NO_CONTROLLER -1
@@ -64,6 +84,22 @@ typedef struct PADStatus
 #endif
 } PADStatus;
 
+#ifdef AURORA
+typedef u16 PADButton;
+typedef u16 PADAxis;
+
+typedef struct PADKeyButtonBinding {
+    s32 scancode;
+    PADButton padButton;
+} PADKeyButtonBinding;
+
+typedef struct PADKeyAxisBinding {
+    s32 scancode;
+    PADAxis padAxis;
+    s16 influence;
+} PADKeyAxisBinding;
+#endif
+
 // PAD.c
 BOOL PADReset(u32 mask);
 BOOL PADRecalibrate(u32 mask);
@@ -79,6 +115,15 @@ BOOL PADGetType(s32 chan, u32* type);
 BOOL PADSync(void);
 void PADSetAnalogMode(u32 mode);
 PADSamplingCallback PADSetSamplingCallback(PADSamplingCallback callback);
+
+#ifdef AURORA
+BOOL PADSetKeyButtonBindings(u32 port, PADKeyButtonBinding bindings[PAD_BUTTON_COUNT]);
+PADKeyButtonBinding* PADGetKeyButtonBindings(u32 port, u32* buttonCount);
+BOOL PADSetKeyAxisBindings(u32 port, PADKeyAxisBinding bindings[PAD_AXIS_COUNT]);
+void PADSetKeyboardActive(u32 port, BOOL active);
+void PADSetVirtualStatus(u32 port, const PADStatus* status);
+void PADClearVirtualStatus(u32 port);
+#endif
 
 // Padclamp.c
 void PADClamp(PADStatus * status);
