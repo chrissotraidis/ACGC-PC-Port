@@ -4,6 +4,7 @@
 #include "pc_assets.h"
 #include "pc_disc.h"
 #include "pc_settings.h"
+#include "pc_virtual_input.h"
 
 #include <aurora/aurora.h>
 #include <aurora/event.h>
@@ -160,6 +161,7 @@ static void bellpad_find_image_range(void) {
 }
 
 int pc_platform_poll_events(void) {
+    pc_pad_poll_normalized_state();
     const AuroraEvent* event = aurora_update();
     while (event && event->type != AURORA_NONE) {
         if (event->type == AURORA_EXIT) {

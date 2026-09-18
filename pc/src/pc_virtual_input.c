@@ -6,6 +6,21 @@
 
 PCVirtualPadState g_pc_virtual_pad_state = {0};
 
+#ifdef AURORA
+__attribute__((weak)) int bellpad_copy_normalized_pad_state(u16* buttons, s8* stick_x, s8* stick_y,
+                                                             s8* cstick_x, s8* cstick_y,
+                                                             u8* trigger_left, u8* trigger_right) {
+    (void)buttons;
+    (void)stick_x;
+    (void)stick_y;
+    (void)cstick_x;
+    (void)cstick_y;
+    (void)trigger_left;
+    (void)trigger_right;
+    return FALSE;
+}
+#endif
+
 void pc_pad_set_virtual_state(u16 buttons, s8 stick_x, s8 stick_y, s8 cstick_x, s8 cstick_y, u8 trigger_left,
                               u8 trigger_right) {
     g_pc_virtual_pad_state.buttons = buttons;
@@ -35,3 +50,16 @@ void pc_pad_clear_virtual_state(void) {
     PADClearVirtualStatus(PAD_CHAN0);
 #endif
 }
+
+#ifdef AURORA
+void pc_pad_poll_normalized_state(void) {
+    PCVirtualPadState state;
+    if (bellpad_copy_normalized_pad_state(&state.buttons, &state.stick_x, &state.stick_y,
+                                          &state.cstick_x, &state.cstick_y,
+                                          &state.trigger_left, &state.trigger_right)) {
+        pc_pad_set_virtual_state(state.buttons, state.stick_x, state.stick_y,
+                                 state.cstick_x, state.cstick_y,
+                                 state.trigger_left, state.trigger_right);
+    }
+}
+#endif
