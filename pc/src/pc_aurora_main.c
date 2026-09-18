@@ -221,6 +221,16 @@ int pc_platform_poll_events(void) {
         }
         ++event;
     }
+#ifdef BELLPAD_IOS
+    if (bellpad_consume_will_resign_active()) {
+        pc_audio_set_paused(1);
+        printf("[Lifecycle] Audio paused after UIApplicationWillResignActive\n");
+    }
+    if (bellpad_consume_did_become_active()) {
+        pc_audio_set_paused(0);
+        printf("[Lifecycle] Audio resumed after UIApplicationDidBecomeActive\n");
+    }
+#endif
     return g_pc_running;
 }
 
