@@ -3226,7 +3226,17 @@ void emu64::dirty_check(int tile, int n_tiles, int do_texture_matrix) {
     if (IS_DIRTY(EMU64_DIRTY_FLAG_PRIM_COLOR)) {
         EMU64_TIMED_SEGMENT_BEGIN();
         CLEAR_DIRTY(EMU64_DIRTY_FLAG_PRIM_COLOR);
+#ifdef AURORA
+        GXColor primitive_color = {
+            (u8)(this->primitive_color.raw >> 24),
+            (u8)(this->primitive_color.raw >> 16),
+            (u8)(this->primitive_color.raw >> 8),
+            (u8)this->primitive_color.raw,
+        };
+        GXSetTevColor(GX_TEVREG1, primitive_color);
+#else
         GXSetTevColor(GX_TEVREG1, this->primitive_color.color);
+#endif
         EMU64_TIMED_SEGMENT_END(dirty_primcolor_time);
     }
 
@@ -3235,7 +3245,17 @@ void emu64::dirty_check(int tile, int n_tiles, int do_texture_matrix) {
     if (IS_DIRTY(EMU64_DIRTY_FLAG_ENV_COLOR)) {
         EMU64_TIMED_SEGMENT_BEGIN();
         CLEAR_DIRTY(EMU64_DIRTY_FLAG_ENV_COLOR);
+#ifdef AURORA
+        GXColor environment_color = {
+            (u8)(this->environment_color.raw >> 24),
+            (u8)(this->environment_color.raw >> 16),
+            (u8)(this->environment_color.raw >> 8),
+            (u8)this->environment_color.raw,
+        };
+        GXSetTevColor(GX_TEVREG2, environment_color);
+#else
         GXSetTevColor(GX_TEVREG2, this->environment_color.color);
+#endif
         EMU64_TIMED_SEGMENT_END(dirty_envcolor_time);
     }
 

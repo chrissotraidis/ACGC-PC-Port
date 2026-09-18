@@ -88,7 +88,17 @@ static void mMsg_Draw_Window(mMsg_Window_c* msg_p, GAME* game) {
         mFont_UnSetMatrix(game->graph, mFont_MODE_FONT);
 
         if (msg_p->msg_data->data_loaded) {
+#ifdef AURORA
+            /* The original texture-rectangle glyph path installs its own
+             * screen-space matrix. Aurora renders these glyphs as polygons,
+             * so restore the font's identity model-view after drawing the
+             * translated/scaled message window. */
+            mFont_SetMatrix(game->graph, mFont_MODE_FONT);
+#endif
             mMsg_draw_font(msg_p, game);
+#ifdef AURORA
+            mFont_UnSetMatrix(game->graph, mFont_MODE_FONT);
+#endif
         }
 
         mChoice_Draw(&msg_p->choice_window, game, mFont_MODE_FONT);

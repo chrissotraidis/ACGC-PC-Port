@@ -79,6 +79,9 @@ static void mMsg_draw_font(mMsg_Window_c* msg_p, GAME* game) {
     else {
       sentence_flags = mFont_SENTENCE_SKIP_DRAW_NEW_LINE | mFont_SENTENCE_FLAG_NO_COMBINE | mFont_SENTENCE_FLAG_3 | mFont_SENTENCE_FLAG_CUT;
     }
+#ifdef AURORA
+    sentence_flags |= mFont_SENTENCE_FLAG_USE_POLY;
+#endif
 
     if (
       voice &&
