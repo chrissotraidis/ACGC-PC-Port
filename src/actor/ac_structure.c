@@ -23,7 +23,27 @@ ACTOR_PROFILE Structure_Profile = { mAc_PROFILE_STRUCTURE,
                                     NULL };
 
 static u8 aSTR_overlay[aSTR_ACTOR_TBL_COUNT][aSTR_OVERLAY_SIZE];
+#ifdef TARGET_PC
+/* Some derived structure actors are larger than STRUCTURE_ACTOR on host.
+ * For example, SHRINE_ACTOR is 0x348 bytes with 64-bit pointers while the
+ * base structure is 0x340. Keep each static pool slot independently sized. */
+#define aSTR_PC_ACTOR_SLOT_SIZE 0x400
+
+typedef union {
+    u64 align;
+    STRUCTURE_ACTOR actor;
+    u8 bytes[aSTR_PC_ACTOR_SLOT_SIZE];
+} aSTR_pc_actor_storage_c;
+
+static aSTR_pc_actor_storage_c aSTR_actor_cl[aSTR_ACTOR_TBL_COUNT];
+
+static STRUCTURE_ACTOR* aSTR_pc_actor_slot(int idx) {
+    return &aSTR_actor_cl[idx].actor;
+}
+#else
 static STRUCTURE_ACTOR aSTR_actor_cl[aSTR_ACTOR_TBL_COUNT];
+#define aSTR_pc_actor_slot(idx) (&aSTR_actor_cl[idx])
+#endif
 
 #include "../src/actor/ac_structure_clip.c_inc"
 
