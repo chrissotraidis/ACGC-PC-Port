@@ -344,7 +344,59 @@ static int pc_parse_rain_intensity(const char* text) {
     return -1;
 }
 
+#ifdef __APPLE__
+/* Bellpad's data directory holds no retail image, so an unqualified disc search
+ * fails on every launch and the picker would reappear each time. Remember the
+ * image the player actually chose and reuse it until it stops resolving. */
+static int pc_apple_open_remembered_disc(void) {
+    char remembered[PATH_MAX];
+
+    if (!pc_apple_load_disc_path(remembered, sizeof(remembered))) return 0;
+    if (pc_disc_set_path(remembered) && pc_disc_init()) return 1;
+
+    /* Deleted, replaced, or no longer a supported image: ask again. */
+    pc_apple_forget_disc_path();
+    pc_disc_set_path(NULL);
+    return 0;
+}
+
+static int pc_apple_open_chosen_disc(void) {
+    char selected[PATH_MAX];
+
+    if (!pc_apple_choose_disc(selected, sizeof(selected))) return 0;
+    if (!pc_disc_set_path(selected) || !pc_disc_init()) {
+        pc_disc_set_path(NULL);
+        return 0;
+    }
+
+    pc_apple_store_disc_path(selected);
+    return 1;
+}
+
+static void pc_apple_open_disc(int path_from_argv, int choose_requested) {
+    if (choose_requested) {
+        pc_apple_forget_disc_path();
+        pc_apple_open_chosen_disc();
+        return;
+    }
+
+    /* --disc selects an image for one run without replacing the remembered one. */
+    if (path_from_argv) {
+        pc_disc_init();
+        return;
+    }
+
+    if (pc_apple_open_remembered_disc()) return;
+    if (pc_disc_init()) return;
+    pc_apple_open_chosen_disc();
+}
+#endif
+
 int main(int argc, char* argv[]) {
+#ifdef __APPLE__
+    int disc_path_from_argv = 0;
+    int choose_disc_requested = 0;
+#endif
 #ifndef _WIN32
     /* prefer discrete GPU on Linux (NVIDIA PRIME and AMD) while respecting user overrides */
     setenv("__NV_PRIME_RENDER_OFFLOAD", "1", 0);
@@ -377,7 +429,10 @@ int main(int argc, char* argv[]) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("Usage: Bellpad [options]\n");
             printf("  --verbose, -v       Enable diagnostic output\n");
-            printf("  --disc PATH         Use a supported GAFE01 Rev 0 disc image\n");
+            printf("  --disc PATH         Use a supported GAFE01 Rev 0 disc image for this run\n");
+#ifdef __APPLE__
+            printf("  --choose-disc       Forget the remembered image and pick another\n");
+#endif
             printf("  --framelimit 60     Use the native 60 Hz simulation rate (default)\n");
             printf("  --model-viewer [N]  Launch model viewer (optional start index)\n");
             printf("  --time H[:M[:S]]    Override in-game time (e.g. 5, 17:30, 5:55:00)\n");
@@ -393,6 +448,11 @@ int main(int argc, char* argv[]) {
                 fprintf(stderr, "Disc image path is too long.\n");
                 return 2;
             }
+#ifdef __APPLE__
+            disc_path_from_argv = 1;
+        } else if (strcmp(argv[i], "--choose-disc") == 0) {
+            choose_disc_requested = 1;
+#endif
         } else if (strcmp(argv[i], "--framelimit") == 0) {
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 int v = atoi(argv[i + 1]);
@@ -542,15 +602,11 @@ int main(int argc, char* argv[]) {
     pc_settings_load();
     pc_keybindings_load();
     pc_platform_init();
-    if (!pc_disc_init()) {
 #ifdef __APPLE__
-        char selected_path[PATH_MAX];
-        if (pc_apple_choose_disc(selected_path, sizeof(selected_path)) &&
-            pc_disc_set_path(selected_path)) {
-            pc_disc_init();
-        }
+    pc_apple_open_disc(disc_path_from_argv, choose_disc_requested);
+#else
+    pc_disc_init();
 #endif
-    }
     if (!pc_assets_init()) {
         const char* msg =
             "No game data found.\n\n"
