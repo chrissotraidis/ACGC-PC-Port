@@ -195,14 +195,29 @@ BOOL DVDClose(void* fileInfo) {
 
 s32 DVDReadPrio(void* fileInfo, void* buf, s32 length, s32 offset, s32 prio) {
     FILE* fp = *dvd_fi_fp(fileInfo);
+    u32 file_length = *dvd_fi_length(fileInfo);
+    u32 readable;
     (void)prio;
+
+    if (length < 0 || offset < 0 || (u32)offset > file_length) {
+        return -1;
+    }
+
+    readable = (u32)length;
+    if (readable > file_length - (u32)offset) {
+        readable = file_length - (u32)offset;
+    }
 
     if (fp == DISC_SENTINEL) {
         /* disc image read */
         u32 base = *dvd_fi_startAddr(fileInfo);
-        if (pc_disc_read(base + (u32)offset, buf, (u32)length))
-            return length;
-        return -1;
+        if (readable > 0 && !pc_disc_read(base + (u32)offset, buf, readable)) {
+            return -1;
+        }
+        if (readable < (u32)length) {
+            memset((u8*)buf + readable, 0, (u32)length - readable);
+        }
+        return length;
     }
 
     if (!fp) {
@@ -210,7 +225,13 @@ s32 DVDReadPrio(void* fileInfo, void* buf, s32 length, s32 offset, s32 prio) {
     }
 
     fseek(fp, offset, SEEK_SET);
-    return (s32)fread(buf, 1, length, fp);
+    if (readable > 0 && fread(buf, 1, readable, fp) != readable) {
+        return -1;
+    }
+    if (readable < (u32)length) {
+        memset((u8*)buf + readable, 0, (u32)length - readable);
+    }
+    return length;
 }
 
 s32 DVDRead(void* fileInfo, void* buf, s32 length, s32 offset) {
