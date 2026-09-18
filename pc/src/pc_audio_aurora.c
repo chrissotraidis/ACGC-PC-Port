@@ -10,6 +10,7 @@
 #include "pc_audio_ptr.h"
 #include "pc_settings.h"
 #include "jaudio_NES/audiothread.h"
+#include "jaudio_NES/rate.h"
 
 #if UINTPTR_MAX > 0xFFFFFFFFu
 uintptr_t pc_audio_ptr_base = 0;
@@ -25,6 +26,7 @@ static s16 ring_buffer[RING_BUF_SAMPLES];
 static SDL_AtomicInt ring_write_pos;
 static SDL_AtomicInt ring_read_pos;
 static SDL_AtomicInt audio_thread_running;
+static SDL_AtomicInt audio_output_paused;
 static SDL_AudioStream* audio_stream;
 static SDL_Thread* audio_producer_thread;
 
@@ -39,7 +41,17 @@ int pc_audio_get_buffer_fill(void) {
 static int pc_audio_producer_func(void* data) {
     (void)data;
     while (SDL_GetAtomicInt(&audio_thread_running)) {
-        if (pc_audio_get_buffer_fill() < AUDIO_PRODUCE_THRESHOLD) {
+        if (SDL_GetAtomicInt(&audio_output_paused)) {
+            /* CoreAudio stops consuming during an interruption, but the game's
+             * audio command queue must keep advancing. Generate one native DAC
+             * frame at a time, discard its samples, and pace it by sample time. */
+            SDL_SetAtomicInt(&ring_read_pos, SDL_GetAtomicInt(&ring_write_pos));
+            pc_audio_process_frame();
+            SDL_SetAtomicInt(&ring_read_pos, SDL_GetAtomicInt(&ring_write_pos));
+            Uint64 delay_ns = ((Uint64)DAC_SIZE * SDL_NS_PER_SECOND) /
+                              ((Uint64)PC_AUDIO_SAMPLE_RATE * 2u);
+            SDL_DelayNS(delay_ns ? delay_ns : SDL_MS_TO_NS(1));
+        } else if (pc_audio_get_buffer_fill() < AUDIO_PRODUCE_THRESHOLD) {
             pc_audio_process_frame();
         } else {
             SDL_Delay(1);
@@ -153,8 +165,19 @@ void AIStopDMA(void) {
 
 void pc_audio_set_paused(int paused) {
     if (!audio_stream) return;
-    if (paused) SDL_PauseAudioStreamDevice(audio_stream);
-    else SDL_ResumeAudioStreamDevice(audio_stream);
+    if (paused) {
+        if (SDL_GetAtomicInt(&audio_output_paused)) return;
+        SDL_PauseAudioStreamDevice(audio_stream);
+        SDL_SetAtomicInt(&audio_output_paused, 1);
+        printf("[AUDIO] Output paused; producer remains clocked\n");
+    } else {
+        if (!SDL_GetAtomicInt(&audio_output_paused)) return;
+        SDL_ClearAudioStream(audio_stream);
+        SDL_SetAtomicInt(&ring_read_pos, SDL_GetAtomicInt(&ring_write_pos));
+        SDL_SetAtomicInt(&audio_output_paused, 0);
+        SDL_ResumeAudioStreamDevice(audio_stream);
+        printf("[AUDIO] Output resumed with fresh samples\n");
+    }
 }
 
 u32 AIGetDMAStartAddr(void) { return 0; }
