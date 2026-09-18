@@ -32,6 +32,21 @@ int pc_typing_queue_pop(int* out) {
     return 1;
 }
 
+int pc_typing_begin(void) {
+    if (!g_pc_editor_active) return 0;
+    if (!g_pc_typing_mode) {
+        g_pc_typing_mode = 1;
+        SDL_StartTextInput();
+        pc_typing_queue_clear();
+    }
+    return 1;
+}
+
+void pc_typing_end(void) {
+    g_pc_typing_mode = 0;
+    SDL_StopTextInput();
+}
+
 /* Map a UTF-8 character from SDL_TEXTINPUT to an AC game character code.
  * Returns -1 for unmappable characters. */
 int pc_utf8_to_game_code(const char* text) {
@@ -96,51 +111,77 @@ int pc_utf8_to_game_code(const char* text) {
     return -1;
 }
 
+int pc_typing_commit_utf8(const char* text) {
+    int queued = 0;
+
+    if (!text || !g_pc_typing_mode || !g_pc_editor_active) return 0;
+
+    while (*text) {
+        int code = pc_utf8_to_game_code(text);
+        if (code >= 0 && g_pc_typing_queue.count < PC_TYPING_QUEUE_SIZE) {
+            pc_typing_queue_push(code);
+            queued++;
+        }
+
+        unsigned char lead = (unsigned char)*text;
+        if (lead < 0x80) text += 1;
+        else if (lead < 0xE0) text += 2;
+        else if (lead < 0xF0) text += 3;
+        else text += 4;
+    }
+
+    return queued;
+}
+
+int pc_typing_command(int command) {
+    if (!g_pc_typing_mode || !g_pc_editor_active || g_pc_typing_queue.count >= PC_TYPING_QUEUE_SIZE) return 0;
+
+    switch (command) {
+        case PC_TYPING_CMD_BACKSPACE:
+        case PC_TYPING_CMD_LEFT:
+        case PC_TYPING_CMD_RIGHT:
+        case PC_TYPING_CMD_UP:
+        case PC_TYPING_CMD_DOWN:
+        case PC_TYPING_CMD_ENTER:
+            pc_typing_queue_push(command);
+            return 1;
+        default:
+            return 0;
+    }
+}
+
 void pc_typing_handle_event(const SDL_Event* event) {
     if (event->type == SDL_KEYDOWN) {
         if (event->key.keysym.sym == SDLK_TAB && !event->key.repeat && g_pc_editor_active) {
-            g_pc_typing_mode ^= 1;
             if (g_pc_typing_mode) {
-                SDL_StartTextInput();
-                pc_typing_queue_clear();
+                pc_typing_end();
             } else {
-                SDL_StopTextInput();
+                pc_typing_begin();
             }
         }
 
         if (g_pc_typing_mode && g_pc_editor_active) {
             switch (event->key.keysym.sym) {
-                case SDLK_BACKSPACE: pc_typing_queue_push(PC_TYPING_CMD_BACKSPACE); break;
+                case SDLK_BACKSPACE: pc_typing_command(PC_TYPING_CMD_BACKSPACE); break;
                 case SDLK_RETURN:
-                case SDLK_KP_ENTER:  pc_typing_queue_push(PC_TYPING_CMD_ENTER); break;
-                case SDLK_LEFT:      pc_typing_queue_push(PC_TYPING_CMD_LEFT); break;
-                case SDLK_RIGHT:     pc_typing_queue_push(PC_TYPING_CMD_RIGHT); break;
-                case SDLK_UP:        pc_typing_queue_push(PC_TYPING_CMD_UP); break;
-                case SDLK_DOWN:      pc_typing_queue_push(PC_TYPING_CMD_DOWN); break;
+                case SDLK_KP_ENTER:  pc_typing_command(PC_TYPING_CMD_ENTER); break;
+                case SDLK_LEFT:      pc_typing_command(PC_TYPING_CMD_LEFT); break;
+                case SDLK_RIGHT:     pc_typing_command(PC_TYPING_CMD_RIGHT); break;
+                case SDLK_UP:        pc_typing_command(PC_TYPING_CMD_UP); break;
+                case SDLK_DOWN:      pc_typing_command(PC_TYPING_CMD_DOWN); break;
                 default: break;
             }
         }
     }
 
     if (event->type == SDL_TEXTINPUT && g_pc_typing_mode && g_pc_editor_active) {
-        const char* p = event->text.text;
-        while (*p) {
-            int code = pc_utf8_to_game_code(p);
-            if (code >= 0)
-                pc_typing_queue_push(code);
-            unsigned char lead = (unsigned char)*p;
-            if (lead < 0x80) p += 1;
-            else if (lead < 0xE0) p += 2;
-            else if (lead < 0xF0) p += 3;
-            else p += 4;
-        }
+        pc_typing_commit_utf8(event->text.text);
     }
 }
 
 void pc_typing_update(void) {
     if (g_pc_typing_mode && !g_pc_editor_active) {
-        g_pc_typing_mode = 0;
-        SDL_StopTextInput();
+        pc_typing_end();
         pc_typing_queue_clear();
     }
 }

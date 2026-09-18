@@ -35,6 +35,10 @@ void pc_typing_queue_clear(void);
 void pc_typing_queue_push(int code);
 int  pc_typing_queue_pop(int* out);
 int  pc_utf8_to_game_code(const char* text);
+int  pc_typing_begin(void);
+void pc_typing_end(void);
+int  pc_typing_commit_utf8(const char* text);
+int  pc_typing_command(int command);
 void pc_typing_handle_event(const SDL_Event* event);
 void pc_typing_update(void);
 
