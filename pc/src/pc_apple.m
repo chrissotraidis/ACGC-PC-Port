@@ -2,7 +2,9 @@
 
 #include "pc_apple.h"
 
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 int pc_apple_choose_disc(char* out_path, size_t capacity) {
     if (out_path == NULL || capacity == 0) return 0;
@@ -43,5 +45,37 @@ int pc_apple_resource_path(const char* relative_path, char* out_path,
         if (file_path == NULL || strlen(file_path) >= capacity) return 0;
         strcpy(out_path, file_path);
         return 1;
+    }
+}
+
+int pc_apple_prepare_data_directory(void) {
+    @autoreleasepool {
+        NSString* data_path = nil;
+        const char* override_path = getenv("BELLPAD_DATA_HOME");
+
+        if (override_path != NULL && override_path[0] != '\0') {
+            if (override_path[0] != '/') return 0;
+            data_path = [NSString stringWithUTF8String:override_path];
+        } else {
+            NSArray<NSURL*>* roots = [NSFileManager.defaultManager
+                URLsForDirectory:NSApplicationSupportDirectory
+                inDomains:NSUserDomainMask];
+            NSURL* root = roots.firstObject;
+            data_path = [[root URLByAppendingPathComponent:@"Bellpad"
+                                                isDirectory:YES] path];
+        }
+
+        if (data_path == nil) return 0;
+
+        NSError* error = nil;
+        if (![NSFileManager.defaultManager createDirectoryAtPath:data_path
+                                     withIntermediateDirectories:YES
+                                                      attributes:nil
+                                                           error:&error]) {
+            return 0;
+        }
+
+        const char* file_path = data_path.fileSystemRepresentation;
+        return file_path != NULL && chdir(file_path) == 0;
     }
 }

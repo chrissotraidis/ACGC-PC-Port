@@ -532,6 +532,12 @@ int main(int argc, char* argv[]) {
 #endif
 
     SDL_SetMainReady();
+#ifdef __APPLE__
+    if (!pc_apple_prepare_data_directory()) {
+        fprintf(stderr, "Could not create Bellpad's Application Support directory.\n");
+        return 1;
+    }
+#endif
     pc_settings_load();
     pc_keybindings_load();
     pc_platform_init();
