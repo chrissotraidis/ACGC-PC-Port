@@ -48,3 +48,6 @@ temp/
 include/PR/
 include/gcc/
 include/compiler/gcc/stdlib.h
+
+# Bellpad local build outputs
+build-*/
