@@ -461,13 +461,34 @@ int main(int argc, char* argv[]) {
     }
 #elif defined(__APPLE__)
     {
-        /* macOS: use dladdr — no ELF headers available */
+        /* macOS: derive the exact loaded Mach-O range. A broad estimate can
+         * turn an arbitrary truncated value into a plausible but unmapped
+         * pointer during GBI recovery. */
         Dl_info dl;
         if (dladdr((void*)main, &dl) && dl.dli_fbase) {
             pc_image_base = (uintptr_t)dl.dli_fbase;
-            /* Estimate image end — on 64-bit, seg2k0 uses threshold check
-             * instead of image range, so this is defense-in-depth only. */
-            pc_image_end = pc_image_base + 0x10000000;
+            const struct mach_header_64* header =
+                (const struct mach_header_64*)dl.dli_fbase;
+            const struct load_command* command =
+                (const struct load_command*)(header + 1);
+            intptr_t slide = _dyld_get_image_vmaddr_slide(0);
+
+            for (u32 i = 0; i < header->ncmds; i++) {
+                if (command->cmd == LC_SEGMENT_64) {
+                    const struct segment_command_64* segment =
+                        (const struct segment_command_64*)command;
+                    if (strcmp(segment->segname, SEG_PAGEZERO) != 0) {
+                        uintptr_t segment_end = (uintptr_t)slide +
+                            (uintptr_t)segment->vmaddr +
+                            (uintptr_t)segment->vmsize;
+                        if (segment_end > pc_image_end) {
+                            pc_image_end = segment_end;
+                        }
+                    }
+                }
+                command = (const struct load_command*)
+                    ((const u8*)command + command->cmdsize);
+            }
         }
     }
 #else

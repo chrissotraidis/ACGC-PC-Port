@@ -1,5 +1,6 @@
 /* pc_gx_texture.c - GC texture format decoders + 2048-entry texture cache */
 #include "pc_gx_internal.h"
+#include "pc_gbi_ptr.h"
 #include "pc_texture_pack.h"
 #include <dolphin/gx/GXEnum.h>
 #include <stdlib.h>
@@ -7,6 +8,32 @@
 static int pc_gx_tlut_force_be(void);
 static void decode_rgb5a3_entry(u16 val, u8* r, u8* g, u8* b, u8* a);
 static u32 tlut_content_hash(const void* data, int tlut_fmt, int n_entries, int is_be);
+
+/* For this port's supported 64-bit layouts, game pointers come from mapped
+ * regions above the low 4 GiB. Recover a legacy truncated GBI pointer only
+ * when its low bits identify a byte inside the known game arena or executable
+ * image. Reject other values before texture hashing or decoding dereferences
+ * them. */
+static void* pc_gx_resolve_gbi_ptr(void* data) {
+#if UINTPTR_MAX > 0xFFFFFFFFu
+    uintptr_t raw = (uintptr_t)data;
+    if (raw != 0 && raw <= 0xFFFFFFFFu) {
+        uintptr_t recovered = pc_gbi_recover_ptr((unsigned int)raw);
+        if (recovered == raw) {
+            static int warned = 0;
+            if (!warned) {
+                fprintf(stderr,
+                        "[PC] Rejected unrecoverable low GBI texture pointer %p\n",
+                        data);
+                warned = 1;
+            }
+            return NULL;
+        }
+        return (void*)recovered;
+    }
+#endif
+    return data;
+}
 
 /* --- TLUT stale-data detection ---
  * On GC, gsDPLoadTLUT_Dolphin always re-DMA'd palette data from memory.
@@ -203,7 +230,7 @@ void GXInitTexObj(void* obj, void* image_ptr, u16 width, u16 height, u32 format,
                   u32 wrap_s, u32 wrap_t, u8 mipmap) {
     PCTexObj* o = (PCTexObj*)obj;
     memset(o, 0, sizeof(PCTexObj));
-    o->image_ptr = image_ptr;
+    o->image_ptr = pc_gx_resolve_gbi_ptr(image_ptr);
     o->width = width;
     o->height = height;
     o->format = format;
@@ -224,7 +251,7 @@ void GXInitTexObjCI(void* obj, void* image_ptr, u16 width, u16 height, u32 forma
 
 void GXInitTexObjData(void* obj, void* image_ptr) {
     PCTexObj* o = (PCTexObj*)obj;
-    o->image_ptr = image_ptr;
+    o->image_ptr = pc_gx_resolve_gbi_ptr(image_ptr);
 }
 
 void GXInitTexObjLOD(void* obj, u32 min_filt, u32 mag_filt, f32 min_lod, f32 max_lod,
@@ -848,7 +875,7 @@ void GXInvalidateTexRegion(void* region) { (void)region; }
 void GXInitTlutObj(void* obj, void* lut, u32 fmt, u16 n_entries) {
     PCTlutObj* o = (PCTlutObj*)obj;
     memset(o, 0, sizeof(PCTlutObj));
-    o->data = lut;
+    o->data = pc_gx_resolve_gbi_ptr(lut);
     o->format = fmt;
     o->n_entries = n_entries;
 }

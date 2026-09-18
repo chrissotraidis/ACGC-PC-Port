@@ -58,6 +58,7 @@
 #include <sys/mman.h>
 #include <dlfcn.h>
 #include <mach-o/dyld.h>
+#include <mach-o/loader.h>
 #else
 #include <signal.h>
 #include <sys/mman.h>
