@@ -2,6 +2,7 @@
 #include "pc_platform.h"
 #include "pc_typing.h"
 #include "pc_keybindings.h"
+#include "pc_virtual_input.h"
 #include <dolphin/pad.h>
 
 /* analog stick constants */
@@ -165,6 +166,29 @@ u32 PADRead(PADStatus* status) {
         status[0].triggerLeft = lt;
         status[0].triggerRight = rt;
     }
+
+    buttons |= g_pc_virtual_pad_state.buttons;
+
+    #define PICK_STRONGER_AXIS(destination, virtual_value) \
+        do { \
+            if (abs((int)(virtual_value)) > abs((int)(destination))) destination = (virtual_value); \
+        } while (0)
+
+    PICK_STRONGER_AXIS(stickX, g_pc_virtual_pad_state.stick_x);
+    PICK_STRONGER_AXIS(stickY, g_pc_virtual_pad_state.stick_y);
+    PICK_STRONGER_AXIS(cstickX, g_pc_virtual_pad_state.cstick_x);
+    PICK_STRONGER_AXIS(cstickY, g_pc_virtual_pad_state.cstick_y);
+
+    #undef PICK_STRONGER_AXIS
+
+    if (g_pc_virtual_pad_state.trigger_left > status[0].triggerLeft) {
+        status[0].triggerLeft = g_pc_virtual_pad_state.trigger_left;
+    }
+    if (g_pc_virtual_pad_state.trigger_right > status[0].triggerRight) {
+        status[0].triggerRight = g_pc_virtual_pad_state.trigger_right;
+    }
+    if (status[0].triggerLeft > TRIGGER_THRESHOLD) buttons |= PAD_TRIGGER_L;
+    if (status[0].triggerRight > TRIGGER_THRESHOLD) buttons |= PAD_TRIGGER_R;
 
     status[0].button = buttons;
     status[0].stickX = stickX;
