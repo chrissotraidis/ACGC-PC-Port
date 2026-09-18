@@ -3,8 +3,26 @@ project(ac_pc C CXX)
 
 option(BELLPAD_MACOS_BUNDLE "Build the playable Apple Silicon baseline as Bellpad.app" OFF)
 option(BELLPAD_AURORA_CORE_PROBE "Compile the game core with Aurora integration enabled" OFF)
+option(BELLPAD_AURORA_LINK_PROBE "Link the game core to Aurora for macOS" OFF)
+set(BELLPAD_AURORA_SOURCE_DIR "" CACHE PATH "Path to the pinned Aurora source checkout")
 if(APPLE)
     enable_language(OBJC)
+endif()
+
+if(BELLPAD_AURORA_LINK_PROBE)
+    if(NOT APPLE)
+        message(FATAL_ERROR "The Bellpad Aurora link probe currently supports macOS only")
+    endif()
+    if(NOT EXISTS "${BELLPAD_AURORA_SOURCE_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR "Set BELLPAD_AURORA_SOURCE_DIR to the pinned Aurora checkout")
+    endif()
+    set(AURORA_ENABLE_GX ON CACHE BOOL "" FORCE)
+    set(AURORA_ENABLE_DVD OFF CACHE BOOL "" FORCE)
+    set(AURORA_ENABLE_CARD ON CACHE BOOL "" FORCE)
+    set(AURORA_CACHE_USE_ZSTD OFF CACHE BOOL "" FORCE)
+    set(AURORA_DAWN_PROVIDER package CACHE STRING "" FORCE)
+    set(AURORA_SDL3_PROVIDER system CACHE STRING "" FORCE)
+    add_subdirectory("${BELLPAD_AURORA_SOURCE_DIR}" aurora)
 endif()
 
 set(CMAKE_C_STANDARD 11)
@@ -449,6 +467,57 @@ if(BELLPAD_AURORA_CORE_PROBE)
         ${GAME_CXX_SOURCES}
     )
     target_compile_definitions(ac_aurora_core_probe PRIVATE AURORA)
+endif()
+
+if(BELLPAD_AURORA_LINK_PROBE)
+    set(BELLPAD_AURORA_SUPPORT_SOURCES ${PC_SOURCES})
+    list(REMOVE_ITEM BELLPAD_AURORA_SUPPORT_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_gx.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_gx_tev.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_gx_texture.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_pad.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_apple.m
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_audio.c
+        ${DECOMP_ROOT}/src/static/dolphin/pad/Padclamp.c
+    )
+    list(APPEND BELLPAD_AURORA_SUPPORT_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_aurora_main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pc_audio_aurora.c
+    )
+
+    add_executable(ac_aurora
+        ${BELLPAD_AURORA_SUPPORT_SOURCES}
+        ${FIXNES_SOURCES}
+        ${GAME_C_SOURCES}
+        ${GAME_CXX_SOURCES}
+    )
+    target_compile_definitions(ac_aurora PRIVATE AURORA)
+    # Several still-decompiling game translation units contain optimization-
+    # sensitive undefined behavior. Keep the game target at the proven -O0
+    # desktop baseline while Aurora and its dependencies retain Release flags.
+    target_compile_options(ac_aurora PRIVATE -O0)
+    target_link_libraries(ac_aurora PRIVATE
+        glad
+        aurora::core
+        aurora::main
+        aurora::os
+        aurora::pad
+        aurora::si
+        aurora::mtx
+        aurora::vi
+        aurora::card
+        aurora::gx
+        aurora::gd
+        "-framework Cocoa"
+        "-framework IOKit"
+        pthread
+        m
+    )
+    set_target_properties(ac_aurora PROPERTIES
+        OUTPUT_NAME "BellpadAurora"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
 endif()
 
 add_executable(ac_pc ${AC_PC_EXECUTABLE_TYPE}

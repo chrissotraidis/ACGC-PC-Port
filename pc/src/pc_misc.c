@@ -153,10 +153,12 @@ void bzero(void* s, unsigned int n) { memset(s, 0, n); }
 void bcopy(const void* src, void* dst, unsigned int n) { memmove(dst, src, n); }
 #endif
 
+#ifndef AURORA
 u8 GXNtsc480IntDf[64] = {0};
 u8 GXNtsc480Int[64] = {0};
 u8 GXMpal480IntDf[64] = {0};
 u8 GXPal528IntDf[64] = {0};
+#endif
 u8 GXEurgb60Hz480IntDf[64] = {0};
 
 void* __gUnkThread1 = NULL;

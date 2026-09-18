@@ -317,11 +317,27 @@ extern s16 JW_JUTGamepad_getSubStickAngle() {
 
 static bool FrameDrawing = false;
 
+#ifdef AURORA
+extern "C" const void* aurora_update(void);
+extern "C" bool aurora_begin_frame(void);
+extern "C" void aurora_end_frame(void);
+#endif
+
 #if defined(TARGET_PC) && !defined(AURORA)
 extern "C" void pc_gx_begin_frame(void);
 #endif
 
 extern void JW_BeginFrame() {
+#ifdef AURORA
+    aurora_update();
+    aurora_begin_frame();
+    /* The original JFWDisplay tick wait depends on the GameCube VI message
+     * thread. The native PC runtime drives frames synchronously, so entering
+     * that wait deadlocks before the first draw. Aurora already owns frame
+     * acquisition; mirror the established native-PC frame boundary here. */
+    FrameDrawing = true;
+    return;
+#endif
 #if defined(TARGET_PC) && !defined(AURORA)
     /* Clear framebuffer at frame start so we don't see undefined data */
     pc_gx_begin_frame();
@@ -343,6 +359,12 @@ extern void JW_BeginFrame() {
 
 extern void JW_EndFrame() {
     void* mgr = JC_JFWDisplay_getManager();
+#ifdef AURORA
+    aurora_end_frame();
+    VIWaitForRetrace();
+    FrameDrawing = false;
+    return;
+#endif
 #if defined(TARGET_PC) && !defined(AURORA)
     /* On PC: pump events, swap buffers, vsync via VIWaitForRetrace */
     VIWaitForRetrace();

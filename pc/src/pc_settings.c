@@ -202,10 +202,12 @@ static void ensure_presets(void) {
     add_preset(2560, 1440);
     add_preset(3840, 2160);
     /* Desktop native (inserted sorted, de-duped against the list above). */
+#ifndef AURORA
     SDL_DisplayMode mode;
     if (SDL_GetDesktopDisplayMode(0, &mode) == 0) {
         add_preset(mode.w, mode.h);
     }
+#endif
 }
 
 /* Find the closest preset by total pixel count. Used when the caller's
@@ -240,6 +242,10 @@ void pc_settings_cycle_resolution(int* width, int* height, int dir) {
 void pc_settings_apply(void) {
     apply_frame_limit_setting();
 
+#ifdef AURORA
+    /* Aurora owns the native window, swap interval, and drawable sizing. */
+    return;
+#else
     if (!g_pc_window) return;
 
     int w = g_pc_settings.window_width;
@@ -288,6 +294,7 @@ void pc_settings_apply(void) {
     printf("[Settings] Applied: %dx%d fullscreen=%d vsync=%d max_fps=%d msaa=%d\n",
            g_pc_settings.window_width, g_pc_settings.window_height,
            g_pc_settings.fullscreen, g_pc_settings.vsync, g_pc_settings.max_fps, g_pc_settings.msaa);
+#endif
 }
 
 void pc_settings_load(void) {

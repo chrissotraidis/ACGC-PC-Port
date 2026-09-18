@@ -17,6 +17,7 @@ u32 g_frame_limiter = 60; // 60Hz
 static void (*vi_pre_callback)(u32) = NULL;
 static void (*vi_post_callback)(u32) = NULL;
 
+#ifndef AURORA
 void VIInit(void) {
     if (g_frame_limiter > 0) {
         printf("[VI] frame limit=%dus (%lu Hz)\n",
@@ -27,10 +28,13 @@ void VIInit(void) {
 }
 
 void VIConfigure(void* rm) { (void)rm; }
+#endif
 
 void VISetNextFrameBuffer(void* fb) { (void)fb; }
 
+#ifndef AURORA
 void VIFlush(void) {}
+#endif
 
 void VIWaitForRetrace(void) {
     if (!perf_freq) perf_freq = SDL_GetPerformanceFrequency();
@@ -111,7 +115,9 @@ u32 VIGetRetraceCount(void) { return retrace_count; }
 
 void VISetBlack(BOOL black) { (void)black; }
 
+#ifndef AURORA
 u32 VIGetTvFormat(void) { return 0; /* VI_NTSC */ }
+#endif
 u32 VIGetDTVStatus(void) { return 0; }
 
 void* VISetPreRetraceCallback(void* cb) {

@@ -1,0 +1,200 @@
+#define _GNU_SOURCE
+
+#include "types.h"
+#include "pc_assets.h"
+#include "pc_disc.h"
+#include "pc_settings.h"
+
+#include <aurora/aurora.h>
+#include <aurora/event.h>
+#include <aurora/main.h>
+
+#include <dlfcn.h>
+#include <mach-o/dyld.h>
+#include <mach-o/loader.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct SDL_Window* g_pc_window = NULL;
+void* g_pc_gl_context = NULL;
+int g_pc_running = 1;
+int g_pc_no_framelimit = 0;
+int g_pc_fast_forward = 0;
+int g_pc_verbose = 1;
+int g_pc_time_override = -1;
+int g_pc_min_override = -1;
+int g_pc_sec_override = -1;
+int g_pc_weather_override = -1;
+int g_pc_weather_intensity_override = 2;
+int g_pc_window_w = 640;
+int g_pc_window_h = 480;
+int g_pc_widescreen_stretch = 0;
+uintptr_t pc_image_base = 0;
+uintptr_t pc_image_end = 0;
+
+static bool s_aurora_initialized;
+static jmp_buf* s_crash_jump;
+static volatile uintptr_t s_crash_address;
+
+extern void ac_entry(void);
+extern int boot_main(int argc, const char** argv);
+extern void pc_audio_shutdown(void);
+extern void pc_audio_mq_shutdown(void);
+
+static void bellpad_crash_handler(int signal_number, siginfo_t* info, void* context) {
+    (void)context;
+    if (s_crash_jump) {
+        s_crash_address = (uintptr_t)info->si_addr;
+        jmp_buf* destination = s_crash_jump;
+        s_crash_jump = NULL;
+        longjmp(*destination, 1);
+    }
+    signal(signal_number, SIG_DFL);
+    raise(signal_number);
+}
+
+void pc_crash_set_jmpbuf(jmp_buf* destination) {
+    static bool installed;
+    if (!installed) {
+        struct sigaction action;
+        memset(&action, 0, sizeof(action));
+        action.sa_sigaction = bellpad_crash_handler;
+        action.sa_flags = SA_SIGINFO;
+        sigaction(SIGSEGV, &action, NULL);
+        sigaction(SIGILL, &action, NULL);
+        sigaction(SIGFPE, &action, NULL);
+        installed = true;
+    }
+    s_crash_jump = destination;
+}
+
+uintptr_t pc_crash_get_addr(void) {
+    return s_crash_address;
+}
+
+uintptr_t pc_crash_get_data_addr(void) {
+    return s_crash_address;
+}
+
+void pc_gx_restore_after_nes(void) {
+}
+
+static void bellpad_log(AuroraLogLevel level, const char* module, const char* message, unsigned int length) {
+    FILE* stream = level >= LOG_ERROR ? stderr : stdout;
+    fprintf(stream, "[Aurora:%s] %.*s\n", module ? module : "", (int)length, message ? message : "");
+    fflush(stream);
+    if (level == LOG_FATAL) {
+        abort();
+    }
+}
+
+static void bellpad_find_image_range(void) {
+    Dl_info info;
+    if (!dladdr((void*)bellpad_find_image_range, &info) || !info.dli_fbase) {
+        return;
+    }
+
+    pc_image_base = (uintptr_t)info.dli_fbase;
+    const struct mach_header_64* header = (const struct mach_header_64*)info.dli_fbase;
+    const struct load_command* command = (const struct load_command*)(header + 1);
+    intptr_t slide = _dyld_get_image_vmaddr_slide(0);
+    for (u32 index = 0; index < header->ncmds; ++index) {
+        if (command->cmd == LC_SEGMENT_64) {
+            const struct segment_command_64* segment = (const struct segment_command_64*)command;
+            if (strcmp(segment->segname, SEG_PAGEZERO) != 0) {
+                uintptr_t end = (uintptr_t)slide + (uintptr_t)segment->vmaddr + (uintptr_t)segment->vmsize;
+                if (end > pc_image_end) {
+                    pc_image_end = end;
+                }
+            }
+        }
+        command = (const struct load_command*)((const u8*)command + command->cmdsize);
+    }
+}
+
+int pc_platform_poll_events(void) {
+    const AuroraEvent* event = aurora_update();
+    while (event && event->type != AURORA_NONE) {
+        if (event->type == AURORA_EXIT) {
+            g_pc_running = 0;
+        } else if (event->type == AURORA_WINDOW_RESIZED) {
+            g_pc_window_w = (int)event->windowSize.native_fb_width;
+            g_pc_window_h = (int)event->windowSize.native_fb_height;
+        }
+        ++event;
+    }
+    return g_pc_running;
+}
+
+void pc_platform_update_window_size(void) {
+}
+
+void pc_platform_swap_buffers(void) {
+}
+
+void pc_platform_shutdown(void) {
+    pc_audio_shutdown();
+    pc_audio_mq_shutdown();
+    pc_disc_shutdown();
+    if (s_aurora_initialized) {
+        s_aurora_initialized = false;
+        aurora_shutdown();
+    }
+}
+
+int main(int argc, char* argv[]) {
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+    for (int index = 1; index < argc; ++index) {
+        if (strcmp(argv[index], "--disc") == 0 && index + 1 < argc) {
+            if (!pc_disc_set_path(argv[++index])) {
+                fprintf(stderr, "Disc image path is too long.\n");
+                return 2;
+            }
+        } else if (strcmp(argv[index], "--framelimit") == 0) {
+            if (index + 1 >= argc || strcmp(argv[++index], "60") != 0) {
+                fprintf(stderr, "Aurora integration is fixed to the native 60 Hz simulation rate.\n");
+                return 2;
+            }
+        } else if (strcmp(argv[index], "--no-framelimit") == 0) {
+            fprintf(stderr, "Uncapped simulation is unsupported.\n");
+            return 2;
+        }
+    }
+
+    bellpad_find_image_range();
+    const AuroraConfig config = {
+        .appName = "Bellpad Aurora",
+        .desiredBackend = BACKEND_METAL,
+        .vsync = true,
+        .pauseOnFocusLost = true,
+        .windowWidth = 640,
+        .windowHeight = 480,
+        .logCallback = bellpad_log,
+        .logLevel = LOG_INFO,
+        .mem1Size = 256 * 1024 * 1024,
+        .mem2Size = 16 * 1024 * 1024,
+    };
+    AuroraInfo info = aurora_initialize(argc, argv, &config);
+    s_aurora_initialized = true;
+    g_pc_window = info.window;
+    g_pc_window_w = (int)info.windowSize.native_fb_width;
+    g_pc_window_h = (int)info.windowSize.native_fb_height;
+
+    pc_settings_load();
+    if (!pc_disc_init() || !pc_assets_init()) {
+        fprintf(stderr, "Bellpad needs a supported user-supplied GAFE01 revision 0 image via --disc PATH.\n");
+        pc_platform_shutdown();
+        return 1;
+    }
+
+    ac_entry();
+    boot_main(argc, (const char**)argv);
+    pc_platform_shutdown();
+    return 0;
+}

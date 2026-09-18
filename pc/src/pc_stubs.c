@@ -65,9 +65,11 @@ void* OSSetErrorHandler(u16 error, void* handler) { (void)error; (void)handler; 
 void OSReportEnable(void) {}
 
 /* VI */
+#ifndef AURORA
 void VIConfigurePan(u16 x_origin, u16 y_origin, u16 width, u16 height) {
     (void)x_origin; (void)y_origin; (void)width; (void)height;
 }
+#endif
 
 int __abs(int x) { return x < 0 ? -x : x; }
 void _strip(float x) { (void)x; }

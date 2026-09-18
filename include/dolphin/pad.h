@@ -57,6 +57,11 @@ typedef struct PADStatus
     /*0x08*/ u8 analogA;
     /*0x09*/ u8 analogB;
     /*0x0A*/ s8 err;
+#ifdef AURORA
+    /* Aurora reports additional host buttons after the SDK-compatible data.
+     * Keep the caller's array stride identical to Aurora's PADStatus ABI. */
+    u32 extButton;
+#endif
 } PADStatus;
 
 // PAD.c
