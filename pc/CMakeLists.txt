@@ -546,6 +546,7 @@ if(BELLPAD_AURORA_LINK_PROBE)
         endif()
         target_sources(ac_aurora PRIVATE
             "${BELLPAD_PRODUCT_SOURCE_DIR}/apple/ios/BellpadGameOverlay.mm"
+            "${BELLPAD_PRODUCT_SOURCE_DIR}/src/platform/BellpadDiscValidator.cpp"
             "${BELLPAD_PRODUCT_SOURCE_DIR}/src/platform/BellpadInput.cpp"
         )
         target_include_directories(ac_aurora PRIVATE
@@ -562,6 +563,7 @@ if(BELLPAD_AURORA_LINK_PROBE)
             "-framework QuartzCore"
             "-framework UIKit"
             "-framework Metal"
+            "-framework UniformTypeIdentifiers"
         )
         set_target_properties(ac_aurora PROPERTIES
             MACOSX_BUNDLE TRUE
