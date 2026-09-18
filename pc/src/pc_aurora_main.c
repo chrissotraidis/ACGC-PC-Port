@@ -59,6 +59,7 @@ extern void ac_entry(void);
 extern int boot_main(int argc, const char** argv);
 extern void pc_audio_shutdown(void);
 extern void pc_audio_mq_shutdown(void);
+extern void pc_audio_set_paused(int paused);
 
 static void bellpad_configure_default_keyboard(void) {
     u32 count = 0;
@@ -195,6 +196,10 @@ int pc_platform_poll_events(void) {
     while (event && event->type != AURORA_NONE) {
         if (event->type == AURORA_EXIT) {
             g_pc_running = 0;
+        } else if (event->type == AURORA_PAUSED) {
+            pc_audio_set_paused(1);
+        } else if (event->type == AURORA_UNPAUSED) {
+            pc_audio_set_paused(0);
         } else if (event->type == AURORA_WINDOW_RESIZED) {
             g_pc_window_w = (int)event->windowSize.native_fb_width;
             g_pc_window_h = (int)event->windowSize.native_fb_height;
