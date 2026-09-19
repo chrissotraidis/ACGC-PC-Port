@@ -427,7 +427,7 @@ int main(int argc, char* argv[]) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            printf("Usage: Bellpad [options]\n");
+            printf("Usage: BellPad [options]\n");
             printf("  --verbose, -v       Enable diagnostic output\n");
             printf("  --disc PATH         Use a supported GAFE01 Rev 0 disc image for this run\n");
 #ifdef __APPLE__
@@ -595,7 +595,7 @@ int main(int argc, char* argv[]) {
     SDL_SetMainReady();
 #ifdef __APPLE__
     if (!pc_apple_prepare_data_directory()) {
-        fprintf(stderr, "Could not create Bellpad's Application Support directory.\n");
+        fprintf(stderr, "Could not create BellPad's Application Support directory.\n");
         return 1;
     }
 #endif
@@ -610,7 +610,7 @@ int main(int argc, char* argv[]) {
     if (!pc_assets_init()) {
         const char* msg =
             "No game data found.\n\n"
-            "Bellpad needs a legally obtained GAFE01 revision 0 disc image.\n"
+            "BellPad needs a legally obtained GAFE01 revision 0 disc image.\n"
             "Choose a supported .iso, .gcm, or .ciso file.";
         fprintf(stderr, "[PC] %s\n", msg);
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,

@@ -13,7 +13,7 @@ int pc_apple_choose_disc(char* out_path, size_t capacity) {
     @autoreleasepool {
         NSOpenPanel* panel = [NSOpenPanel openPanel];
         panel.title = @"Choose your Animal Crossing disc image";
-        panel.message = @"Bellpad supports a legally obtained GAFE01 revision 0 ISO, GCM, or CISO image.";
+        panel.message = @"BellPad supports a legally obtained GAFE01 revision 0 ISO, GCM, or CISO image.";
         panel.prompt = @"Use Disc Image";
         panel.canChooseFiles = YES;
         panel.canChooseDirectories = NO;

@@ -317,7 +317,7 @@ int main(int argc, char* argv[]) {
 
     bellpad_find_image_range();
     const AuroraConfig config = {
-        .appName = "Bellpad Aurora",
+        .appName = "BellPad",
         .desiredBackend = BACKEND_METAL,
         .vsync = true,
         .pauseOnFocusLost = true,
@@ -370,7 +370,7 @@ int main(int argc, char* argv[]) {
 
     pc_settings_load();
     if (!pc_disc_init() || !pc_assets_init()) {
-        fprintf(stderr, "Bellpad needs a supported user-supplied GAFE01 revision 0 image via --disc PATH.\n");
+        fprintf(stderr, "BellPad needs a supported user-supplied GAFE01 revision 0 image via --disc PATH.\n");
         pc_platform_shutdown();
         return 1;
     }
