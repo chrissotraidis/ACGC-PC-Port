@@ -553,6 +553,7 @@ if(BELLPAD_AURORA_LINK_PROBE)
         endif()
         target_sources(ac_aurora PRIVATE
             "${BELLPAD_PRODUCT_SOURCE_DIR}/apple/ios/BellpadGameOverlay.mm"
+            "${BELLPAD_PRODUCT_SOURCE_DIR}/apple/ios/BellpadDiagnostics.mm"
             "${BELLPAD_PRODUCT_SOURCE_DIR}/src/platform/BellpadDiscValidator.cpp"
             "${BELLPAD_PRODUCT_SOURCE_DIR}/src/platform/BellpadInput.cpp"
             "${BELLPAD_PRODUCT_SOURCE_DIR}/src/platform/BellpadSaveData.cpp"

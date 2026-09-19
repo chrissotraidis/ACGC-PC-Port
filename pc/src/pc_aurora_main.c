@@ -32,6 +32,7 @@
 
 #ifdef BELLPAD_IOS
 #include "BellpadGameOverlay.h"
+#include "BellpadDiagnostics.h"
 #endif
 
 struct SDL_Window* g_pc_window = NULL;
@@ -139,6 +140,9 @@ void pc_gx_restore_after_nes(void) {
 }
 
 static void bellpad_log(AuroraLogLevel level, const char* module, const char* message, unsigned int length) {
+#ifdef BELLPAD_IOS
+    bellpad_log_runtime((int)level, module, message, length);
+#endif
     FILE* stream = level >= LOG_ERROR ? stderr : stdout;
     fprintf(stream, "[Aurora:%s] %.*s\n", module ? module : "", (int)length, message ? message : "");
     fflush(stream);
@@ -172,6 +176,9 @@ static void bellpad_find_image_range(void) {
 }
 
 int pc_platform_poll_events(void) {
+#ifdef BELLPAD_IOS
+    bellpad_diagnostics_frame();
+#endif
     pc_rtc_poll_host_clock();
 #ifdef BELLPAD_IOS
     static float applied_framebuffer_scale = -1.0f;
@@ -285,6 +292,7 @@ int main(int argc, char* argv[]) {
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 #ifdef BELLPAD_IOS
+    bellpad_diagnostics_start();
     bool explicit_disc_path = false;
 #endif
     for (int index = 1; index < argc; ++index) {
