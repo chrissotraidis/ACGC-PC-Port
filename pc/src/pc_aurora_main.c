@@ -317,7 +317,7 @@ int main(int argc, char* argv[]) {
 
     bellpad_find_image_range();
     const AuroraConfig config = {
-        .appName = "BellPad",
+        .appName = "Bellpad Aurora", // Stable Aurora preferences/cache identity.
         .desiredBackend = BACKEND_METAL,
         .vsync = true,
         .pauseOnFocusLost = true,
@@ -334,6 +334,7 @@ int main(int argc, char* argv[]) {
     AuroraInfo info = aurora_initialize(argc, argv, &config);
     s_aurora_initialized = true;
     g_pc_window = info.window;
+    SDL_SetWindowTitle(g_pc_window, "BellPad");
     g_pc_window_w = (int)info.windowSize.native_fb_width;
     g_pc_window_h = (int)info.windowSize.native_fb_height;
 
@@ -343,7 +344,7 @@ int main(int argc, char* argv[]) {
 
     char* writable_path = SDL_GetPrefPath("Bellpad", "Bellpad");
     if (!writable_path || chdir(writable_path) != 0) {
-        fprintf(stderr, "Bellpad could not enter its writable Application Support directory.\n");
+        fprintf(stderr, "BellPad could not enter its writable Application Support directory.\n");
         if (writable_path) SDL_free(writable_path);
         pc_platform_shutdown();
         return 1;
@@ -355,7 +356,7 @@ int main(int argc, char* argv[]) {
         if (!bellpad_prepare_game_data_path(writable_path, imported_disc_path,
                                              sizeof(imported_disc_path)) ||
             !pc_disc_set_path(imported_disc_path)) {
-            fprintf(stderr, "Bellpad could not prepare supported user game data.\n");
+            fprintf(stderr, "BellPad could not prepare supported user game data.\n");
             SDL_free(writable_path);
             pc_platform_shutdown();
             return 1;
