@@ -329,7 +329,9 @@ int main(int argc, char* argv[]) {
         .mem2Size = 16 * 1024 * 1024,
     };
 #ifdef BELLPAD_IOS
-    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    if (!SDL_GetHint(SDL_HINT_ORIENTATIONS)) {
+        SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    }
 #endif
     AuroraInfo info = aurora_initialize(argc, argv, &config);
     s_aurora_initialized = true;
